@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온나라 공문 작성 실습 v2</title>
+<style>
+:root {
+  --blue:#1a4f7a; --blue2:#2e6da4; --btn:#4a7fb5;
+  --bg:#f0f2f5; --paper:#fff; --border:#b0b8c8; --line:#d8dde6;
+  --ink:#1a1a2e; --light:#6a7a8a;
+  --ok:#1e7e4a; --err:#c0392b; --warn:#b7770d; --accent:#e8722a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:13px;color:var(--ink);}
+
+.progress-wrap{background:var(--blue);padding:9px 16px;display:flex;align-items:center;gap:0;overflow-x:auto;flex-wrap:nowrap;}
+.step-bubble{background:rgba(255,255,255,.13);color:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:11px;white-space:nowrap;transition:all .3s;flex-shrink:0;}
+.step-bubble.active{background:#fff;color:var(--blue);font-weight:700;}
+.step-bubble.done{background:#5dade2;color:#fff;border-color:#5dade2;}
+.step-arrow{color:rgba(255,255,255,.28);margin:0 3px;font-size:10px;flex-shrink:0;}
+
+.layout{display:grid;grid-template-columns:1fr 290px;gap:14px;padding:14px;max-width:1100px;margin:0 auto;}
+@media(max-width:768px){.layout{grid-template-columns:1fr;padding:8px;}.right-panel{position:static !important;}}
+
+.sim-wrap{background:var(--paper);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.popup-header{background:var(--blue);color:#fff;padding:7px 13px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between;}
+.popup-header .right{font-size:11px;opacity:.8;}
+
+.toolbar{background:#e8edf2;border-bottom:1px solid var(--border);padding:5px 9px;display:flex;gap:3px;flex-wrap:wrap;}
+.tb{background:var(--btn);color:#fff;border:none;border-radius:3px;padding:4px 9px;font-family:inherit;font-size:12px;cursor:pointer;transition:all .15s;position:relative;}
+.tb:hover{background:var(--blue);}
+.tb.cur{background:#e67e22;animation:pulse 1.5s infinite;}
+.tb.done{background:var(--ok);}
+.tb.off{background:#aaa;cursor:not-allowed;opacity:.6;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,126,34,.5)}50%{box-shadow:0 0 0 5px rgba(230,126,34,0)}}
+.hint-pop{position:absolute;bottom:calc(100% + 5px);left:0;background:#fff8e1;border:1px solid #f0c040;border-radius:5px;padding:5px 9px;font-size:11px;color:#5a4000;white-space:nowrap;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.12);pointer-events:none;display:none;}
+.hint-pop::after{content:'';position:absolute;top:100%;left:10px;border:5px solid transparent;border-top-color:#f0c040;}
+.tb.cur:hover .hint-pop,.tb.cur .hint-pop{display:block;}
+
+.sec-title{background:#e8edf2;border-bottom:1px solid var(--border);padding:5px 11px;font-size:12px;font-weight:700;color:var(--blue);display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.badge{border-radius:10px;padding:1px 7px;font-size:10px;color:#fff;}
+.badge.todo{background:#aaa;}.badge.doing{background:#e67e22;}.badge.done2{background:var(--ok);}
+
+.frow{display:flex;align-items:stretch;border-bottom:1px solid var(--line);min-height:33px;}
+.frow:last-child{border-bottom:none;}
+.flabel{width:98px;min-width:98px;background:#f5f7fa;border-right:1px solid var(--line);padding:5px 9px;font-size:12px;color:var(--light);display:flex;align-items:center;gap:2px;flex-shrink:0;}
+.req{color:var(--err);font-size:11px;}
+.fval{flex:1;padding:4px 9px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.fi{border:1px solid var(--border);border-radius:2px;padding:3px 6px;font-family:inherit;font-size:12px;outline:none;transition:all .2s;}
+.fi:focus{border-color:var(--blue2);background:#f0f6ff;}
+.fi.ok{border-color:var(--ok);background:#f0faf4;}
+.fi.wide{width:100%;}
+.fs{border:1px solid var(--border);border-radius:2px;padding:3px 5px;font-family:inherit;font-size:12px;outline:none;background:#fff;}
+.fs.ok{border-color:var(--ok);background:#f0faf4;}
+.sb{border:1px solid var(--border);border-radius:2px;padding:3px 9px;font-family:inherit;font-size:11px;background:#f0f2f5;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.sb:hover{background:#e0e4ea;border-color:#888;}
+.sb.pri{background:var(--btn);color:#fff;border-color:var(--btn);}
+.sb.pri:hover{background:var(--blue);}
+.chk{width:13px;height:13px;cursor:pointer;accent-color:var(--blue2);}
+
+.route-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.route-tbl th{background:#e8edf2;border:1px solid var(--border);padding:4px 7px;text-align:center;}
+.route-tbl td{border:1px solid var(--line);padding:4px 7px;text-align:center;}
+
+.body-row-val{flex:1;padding:4px 9px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.body-filename{font-size:12px;color:var(--blue);font-weight:600;background:#eef4fb;border:1px solid #b8d0ea;border-radius:3px;padding:2px 8px;display:none;}
+
+.right-panel{display:flex;flex-direction:column;gap:13px;position:sticky;top:10px;}
+.guide-card{background:var(--paper);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.guide-hd{background:#2d2d2d;color:#fff;padding:8px 13px;font-size:12px;font-weight:700;letter-spacing:.5px;}
+.guide-body{padding:11px 13px;}
+.sg{padding:7px 9px;border-radius:4px;margin-bottom:5px;border-left:3px solid var(--line);font-size:12px;line-height:1.6;transition:all .3s;}
+.sg.active{border-left-color:#e67e22;background:#fff8f0;}
+.sg.done{border-left-color:var(--ok);background:#f0faf4;}
+.sg.pend{opacity:.4;}
+.sg .num{font-weight:700;color:var(--blue);margin-right:3px;}
+.sg .num.a{color:#e67e22;}.sg .num.d{color:var(--ok);}
+.sg small{display:block;color:var(--light);margin-top:1px;}
+
+/* 본문편집창 */
+.body-editor{display:none;flex-direction:column;height:calc(100vh - 60px);}
+.be-grid{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;min-height:0;}
+@media(max-width:680px){.be-grid{grid-template-columns:1fr;height:auto;}}
+.be-col{display:flex;flex-direction:column;border-right:2px solid var(--border);overflow:hidden;min-height:0;}
+.be-doc-bg{flex:1;overflow-y:auto;padding:10px 12px;background:#e8e8e8;display:flex;flex-direction:column;min-height:0;}
+.be-col:last-child{border-right:none;}
+.be-col-hd{background:#f0f3f7;border-bottom:1px solid var(--line);padding:5px 12px;font-size:11px;font-weight:700;color:var(--light);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.be-badge{color:#fff;font-size:10px;padding:1px 7px;border-radius:8px;}
+.be-badge.q{background:var(--accent);}.be-badge.w{background:var(--blue2);}
+
+/* 문제 카드 */
+.q-card{background:#fff;border:1px solid #bbb;padding:16px;max-width:560px;margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.09);}
+.q-ttl{font-size:13px;font-weight:700;color:var(--blue);border-bottom:2px solid var(--blue);padding-bottom:5px;margin-bottom:11px;}
+.q-mission{background:#fff8f0;border:1px solid #f0c080;border-left:3px solid var(--accent);padding:9px 12px;font-size:12px;line-height:1.9;margin-bottom:11px;}
+.q-mission b{color:var(--accent);}
+.q-tbl{border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:11px;width:100%;}
+.q-tbl-hd{background:#f0f3f7;padding:4px 10px;font-size:11px;font-weight:700;color:var(--light);border-bottom:1px solid var(--line);}
+.q-row{display:flex;border-bottom:1px solid var(--line);min-height:26px;}
+.q-row:last-child{border-bottom:none;}
+.q-lbl{width:68px;min-width:68px;background:#f8f9fb;border-right:1px solid var(--line);padding:4px 7px;font-size:11px;font-weight:700;color:var(--light);display:flex;align-items:center;flex-shrink:0;}
+.q-val{flex:1;padding:4px 9px;font-size:12px;line-height:1.6;display:flex;align-items:center;}
+.q-hints{background:#f5f8ff;border:1px solid #c8d8f0;border-radius:4px;padding:9px 12px;}
+.q-hints-hd{font-size:11px;font-weight:700;color:var(--blue2);margin-bottom:5px;}
+.q-hint{font-size:11px;color:var(--light);line-height:1.85;display:flex;align-items:baseline;gap:5px;}
+.q-hint::before{content:'·';color:var(--accent);font-weight:900;flex-shrink:0;}
+
+/* 공문 양식 */
+.doc-letter{background:#fff;border:1px solid #bbb;width:100%;max-width:100%;flex:1;display:flex;flex-direction:column;box-shadow:0 2px 12px rgba(0,0,0,.10);font-family:'맑은 고딕','Malgun Gothic',sans-serif;font-size:11.5pt;}
+.doc-lhd{text-align:center;border:1px dashed #c00;padding:4px 5px;font-size:10px;color:#555;}
+.doc-ltitle{border:1px dashed #c00;border-top:none;display:flex;align-items:center;justify-content:center;padding:8px 12px;}
+.doc-ltitle .orgname{font-size:20pt;letter-spacing:12px;font-weight:400;color:#1a1a2e;text-align:center;}
+.doc-lfields{border:1px dashed #c00;border-top:none;}
+.doc-lrow{display:flex;border-bottom:1px dashed #c00;min-height:26px;}
+.doc-lrow:last-child{border-bottom:none;}
+.doc-llabel{width:52px;min-width:52px;padding:3px 5px;font-size:10pt;border-right:1px dashed #c00;display:flex;align-items:center;background:#fff;font-weight:600;white-space:nowrap;}
+.doc-linput{flex:1;min-width:0;}
+.doc-linput input{border:none;width:100%;padding:3px 8px;font-family:inherit;font-size:10.5pt;outline:none;background:transparent;}
+.doc-linput input:focus{background:#f0f6ff;}
+.doc-lbody{margin-top:10px;padding:0 18px 8px;}
+.doc-lbody-hint{color:#bbb;font-size:9pt;margin-bottom:3px;font-style:italic;}
+.doc-body-ta{width:100%;flex:1;border:none;border-bottom:1px dashed #eee;font-family:'맑은 고딕',monospace;font-size:10.5pt;padding:4px 2px;outline:none;min-height:100px;resize:none;background:transparent;line-height:2.0;color:var(--ink);}
+.doc-body-ta:focus{background:#fafeff;}
+.doc-attach{display:flex;align-items:flex-start;margin:6px 18px 0;padding:6px 0 0;gap:6px;border-top:1px dashed #eee;}
+.doc-attach-lbl{font-size:10.5pt;font-weight:700;white-space:nowrap;padding-top:2px;min-width:34px;}
+.doc-attach-ta{flex:1;border:none;border-bottom:1px dashed #ddd;font-family:'맑은 고딕',monospace;font-size:10.5pt;padding:2px;outline:none;background:transparent;line-height:2.0;resize:none;min-height:46px;}
+.doc-footer{border-top:1px solid #bbb;margin-top:8px;font-size:8.5pt;color:#333;border:1px solid #bbb;}
+.doc-footer-row{display:flex;border-bottom:1px solid #bbb;}
+.doc-footer-row:last-child{border-bottom:none;}
+.doc-fl{width:44px;min-width:44px;background:#f5f5f5;border-right:1px solid #bbb;padding:3px 4px;font-size:9pt;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.doc-fv{flex:1;border-right:1px solid #bbb;padding:3px 6px;font-size:9pt;display:flex;align-items:center;}
+.doc-fv:last-child{border-right:none;}
+.doc-faddr{padding:3px 7px;border-bottom:1px solid #bbb;font-size:8pt;color:#555;}
+.doc-fcontact{padding:3px 7px;border-bottom:1px solid #bbb;font-size:8pt;color:#555;}
+.doc-fnotice{padding:3px 7px 5px;font-size:7.5pt;color:#888;text-align:center;}
+
+/* 채점 바 */
+.grade-bar{background:var(--paper);border-top:2px solid var(--border);padding:7px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;}
+.grade-score{background:var(--blue);color:#fff;font-size:13px;font-weight:900;padding:4px 13px;border-radius:4px;white-space:nowrap;transition:background .3s;}
+.gc{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;border:1px solid transparent;cursor:default;position:relative;}
+.gc.pass{background:#f0faf4;border-color:#b2d9c0;color:var(--ok);}
+.gc.fail{background:#fdf2f0;border-color:#e8b4ae;color:var(--err);}
+.gc.pend{background:#f5f7fa;border-color:var(--line);color:var(--light);}
+.gc-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:11px;font-weight:400;padding:6px 10px;border-radius:5px;white-space:nowrap;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.2);line-height:1.55;pointer-events:none;}
+.gc-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a2e;}
+.gc:hover .gc-tip{display:block;}
+
+/* 완료 */
+.complete-screen{display:none;flex-direction:column;align-items:center;justify-content:center;padding:36px 20px;text-align:center;gap:10px;}
+.complete-screen .emoji{font-size:46px;}
+.complete-screen h2{color:var(--ok);font-size:17px;}
+.retry-btn{background:var(--blue);color:#fff;border:none;border-radius:4px;padding:7px 22px;font-family:inherit;font-size:13px;cursor:pointer;margin-top:6px;}
+.summary-box{background:#f0faf4;border:1px solid #b2dfdb;border-radius:5px;padding:12px 18px;text-align:left;font-size:12px;line-height:1.9;margin-top:2px;}
+
+/* 모달 */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:10px;}
+.modal.open{display:flex;}
+.modal-box{background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.22);max-width:100%;}
+.modal-hd{background:var(--blue);color:#fff;padding:9px 15px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+.modal-hd .close{cursor:pointer;font-size:16px;opacity:.8;}
+#route-modal .modal-box{width:860px;max-height:92vh;display:flex;flex-direction:column;}
+@media(max-width:900px){#route-modal .modal-box{width:98vw;}}
+.rm-body{display:flex;flex:1;overflow:hidden;border-top:1px solid var(--line);}
+@media(max-width:600px){.rm-body{flex-direction:column;}.rm-tree-wrap{width:100% !important;max-height:160px;border-right:none;border-bottom:1px solid var(--line);}.rm-right{flex-direction:column;}.rm-gubun-wrap{width:100% !important;border-left:none;border-top:1px solid var(--line);flex-direction:row;flex-wrap:wrap;padding:8px;}}
+.rm-tree-wrap{width:200px;border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.rm-tabs{display:flex;border-bottom:1px solid var(--line);}
+.rm-tab{flex:1;text-align:center;padding:6px 0;font-size:11px;cursor:pointer;color:#aaa;border-right:1px solid var(--line);}
+.rm-tab:last-child{border-right:none;}
+.rm-tab.active{background:#eef4fb;color:var(--blue);font-weight:700;}
+.rm-tree-items{flex:1;overflow-y:auto;padding:5px 0;}
+.rm-tree-dept{padding:4px 9px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:5px;border-left:3px solid transparent;}
+.rm-tree-dept:hover{background:#f0f6ff;}
+.rm-tree-dept.selected{background:#eef4fb;color:var(--blue);font-weight:700;border-left-color:var(--blue2);}
+.rm-tree-child{padding:3px 9px 3px 22px;font-size:11px;cursor:pointer;color:#555;border-left:3px solid transparent;}
+.rm-tree-child:hover{background:#f0f6ff;}
+.rm-tree-child.selected{background:#eef4fb;color:var(--blue);font-weight:600;border-left-color:var(--blue2);}
+.rm-search-row{padding:5px 8px;border-top:1px solid var(--line);display:flex;gap:3px;}
+.rm-search-row select,.rm-search-row input{font-size:11px;border:1px solid var(--border);border-radius:2px;padding:2px 4px;font-family:inherit;outline:none;}
+.rm-search-row input{flex:1;}
+.rm-right{flex:1;display:flex;overflow:hidden;}
+.rm-center{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.rm-person-wrap{flex:1;overflow-y:auto;}
+.rm-person-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.rm-person-tbl th{background:#e8edf2;border:1px solid var(--border);padding:5px 8px;text-align:center;white-space:nowrap;}
+.rm-person-tbl td{border:1px solid var(--line);padding:5px 8px;text-align:center;cursor:pointer;}
+.rm-person-tbl tbody tr:hover{background:#f0f6ff;}
+.rm-person-tbl tbody tr.selected{background:#ddeeff;}
+.rm-arrows{padding:5px 10px;display:flex;gap:5px;justify-content:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#f5f7fa;}
+.rm-arr-btn{width:30px;height:24px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px;border-radius:2px;display:flex;align-items:center;justify-content:center;}
+.rm-arr-btn:hover{background:#e8edf2;}
+.rm-selected-wrap{overflow-y:auto;max-height:160px;border-top:1px solid var(--line);}
+.rm-sel-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.rm-sel-tbl th{background:#e8edf2;border:1px solid var(--border);padding:4px 7px;text-align:center;white-space:nowrap;}
+.rm-sel-tbl td{border:1px solid var(--line);padding:4px 7px;text-align:center;}
+.rm-sel-tbl tr.fixed-row td{background:#f5f7fa;color:#555;}
+.rm-gubun-wrap{width:95px;border-left:1px solid var(--line);padding:10px 9px;flex-shrink:0;display:flex;flex-direction:column;gap:5px;overflow-y:auto;}
+.rm-gubun-title{font-weight:700;color:var(--blue);font-size:11px;margin-bottom:3px;}
+.rm-gubun-wrap label{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;padding:2px 0;}
+.rm-footer{padding:9px 14px;display:flex;justify-content:center;gap:8px;border-top:1px solid var(--line);background:#f5f7fa;}
+#recv-modal .modal-box{width:560px;max-height:88vh;display:flex;flex-direction:column;}
+.org-tree-wrap{width:240px;border-right:1px solid var(--line);overflow-y:auto;padding:8px 0;flex-shrink:0;}
+.tree-item{padding:4px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;user-select:none;}
+.tree-item:hover{background:#f0f6ff;}
+.tree-item.selected{background:#eef4fb;color:var(--blue);font-weight:600;}
+.tree-item .toggle{width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888;flex-shrink:0;}
+.tree-children{padding-left:16px;display:none;}
+.tree-children.open{display:block;}
+.recv-right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.recv-selected-list{flex:1;overflow-y:auto;padding:10px;}
+.recv-selected-list .rs-empty{color:#aaa;font-size:12px;text-align:center;margin-top:20px;}
+.recv-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border:1px solid var(--line);border-radius:3px;margin-bottom:4px;font-size:12px;}
+.recv-item .del{color:var(--err);cursor:pointer;font-size:13px;padding:0 3px;}
+.recv-footer{padding:8px 10px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:6px;}
+.recv-header{padding:8px 10px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;color:var(--blue);}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#2d2d2d;color:#fff;padding:9px 20px;border-radius:18px;font-size:13px;z-index:999;display:none;}
+.toast.ok{background:var(--ok);}.toast.err{background:var(--err);}
+</style>
+</head>
+<body>
+
+<!-- 모드 선택 바 -->
+<div style="background:#0f2744;padding:8px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.1);">
+  <span style="color:rgba(255,255,255,.6);font-size:11px;white-space:nowrap;">실습 모드 선택:</span>
+  <button id="mode-btn-full" onclick="setMode('full')"
+    style="background:#fff;color:#0f2744;border:none;border-radius:4px;padding:5px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">
+    📋 전체 실습 모드
+  </button>
+  <button id="mode-btn-quick" onclick="setMode('quick')"
+    style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:5px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">
+    ✏️ 본문 바로 작성
+  </button>
+  <span id="mode-desc" style="color:rgba(255,255,255,.5);font-size:11px;margin-left:4px;">문서카드 → 본문작성 전체 흐름 실습</span>
+</div>
+
+<div class="progress-wrap" id="progress-wrap">
+  <div class="step-bubble active" id="pb0">① 카드 열기</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb1">② 제목</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb2">③ 과제카드</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb3">④ 경로지정</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb4">⑤ 수신지정</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb5">⑥ 발신명의</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb6">⑦ 자동발송</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb7">⑧ 공개/열람</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb8">⑨ 임시저장</div><div class="step-arrow">›</div>
+  <div class="step-bubble" id="pb9">⑩ 본문작성</div>
+</div>
+
+<div class="layout">
+<div>
+
+<!-- 문서관리카드 -->
+<div class="sim-wrap" id="sim-card">
+  <div class="popup-header"><span>문서관리카드</span><div class="right">■ 문서보안 ❓ ✕</div></div>
+  <div class="toolbar">
+    <button class="tb off" id="tb-body" onclick="tbClick('body')">본문작성<div class="hint-pop">⑩ 마지막! 본문 편집창으로</div></button>
+    <button class="tb off">문서처리</button>
+    <button class="tb off" id="tb-route" onclick="tbClick('route')">경로지정<div class="hint-pop">④ 결재선을 지정하세요</div></button>
+    <button class="tb off" id="tb-recv" onclick="tbClick('recv')">수신지정<div class="hint-pop">⑤ 수신 부서를 지정하세요</div></button>
+    <button class="tb off">(안)추가</button><button class="tb off">(안)삭제</button>
+    <button class="tb off">공유지정</button><button class="tb off">로고/심볼</button>
+    <button class="tb off" id="tb-save" onclick="tbClick('save')">임시저장<div class="hint-pop">⑨ 저장 후 본문작성 클릭</div></button>
+  </div>
+  <div style="border-bottom:1px solid var(--line);">
+    <div class="sec-title">· 문서정보 <span class="badge doing" id="badge-info">진행중</span>
+      <span style="margin-left:auto;font-size:11px;display:flex;gap:6px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--border);" id="lbl-int"><input type="radio" name="doctype" id="chk-int" value="int" onchange="onDocType()"> 내부결재</label>
+        <label style="display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--blue2);background:#eef4fb;font-weight:700;color:var(--blue2);" id="lbl-ext"><input type="radio" name="doctype" id="chk-ext" value="ext" onchange="onDocType()" checked> 대내외시행</label>
+      </span>
+    </div>
+    <div class="frow"><div class="flabel">제목 <span class="req">*</span></div><div class="fval"><input class="fi wide" id="f-title" placeholder="공문 제목 입력" oninput="onTitle()" autocomplete="off"><label style="font-size:11px;display:flex;align-items:center;gap:3px;margin-left:6px;"><input type="checkbox"> 긴급</label></div></div>
+    <div class="frow"><div class="flabel">과제카드명 <span class="req">*</span></div><div class="fval"><select class="fs" id="f-task" onchange="onTask()" style="width:90px"><option value="">선택</option><option value="unit">단위</option><option value="manage">관리</option></select><button class="sb" onclick="onTaskSearch()">🔍</button></div></div>
+    <div class="frow"><div class="flabel">관련정보</div><div class="fval"><input class="fi" style="width:260px" placeholder="관련 문서 번호"></div></div>
+    <div class="frow"><div class="flabel">키워드</div><div class="fval"><input class="fi wide" placeholder="#키워드1#키워드2"></div></div>
+    <div class="frow" style="min-height:56px"><div class="flabel" style="align-items:flex-start;padding-top:6px">문서요지</div><div class="fval" style="align-items:flex-start;padding-top:5px"><textarea class="fi wide" style="min-height:44px;resize:vertical;" placeholder="보고내용 요약"></textarea></div></div>
+    <div class="frow"><div class="flabel">본문 <span class="req">*</span></div><div class="body-row-val"><span class="body-filename" id="body-filename"></span><button class="sb">불러오기</button><button class="sb">작성</button><button class="sb">삭제</button><span id="body-hint-txt" style="font-size:11px;color:#aaa">임시저장 후 본문작성 버튼으로 작성</span></div></div>
+    <div class="frow"><div class="flabel">붙임</div><div class="fval"><input class="fi" style="width:220px" placeholder="첨부파일 없음"><button class="sb">추가</button><button class="sb">삭제</button></div></div>
+  </div>
+  <div style="border-bottom:1px solid var(--line);">
+    <div class="sec-title">· 보고경로 <span class="badge todo" id="badge-route">미완료</span><button class="sb pri" style="margin-left:auto;" onclick="tbClick('route')">경로지정</button></div>
+    <div style="padding:8px 11px;overflow-x:auto;"><table class="route-tbl" id="route-tbl" style="min-width:400px;"><thead><tr><th>구분</th><th>직위</th><th>성명</th><th>처리결과</th><th>본문</th><th>의견/지시</th></tr></thead><tbody><tr><td>기안</td><td>주무관</td><td>박희원</td><td></td><td></td><td></td></tr></tbody></table><div id="route-warn" style="color:var(--warn);font-size:11px;margin-top:5px;">⚠️ 경로지정 버튼으로 결재선을 추가하세요.</div></div>
+  </div>
+  <div style="border-bottom:1px solid var(--line);">
+    <div class="sec-title">· 시행정보 <span class="badge todo" id="badge-send">미완료</span>
+      <span id="btn-recv-wrap" style="margin-left:auto;display:flex;gap:4px;">
+        <button class="sb" onclick="tbClick('recv')">수신지정</button>
+        <button class="sb">수신삭제</button>
+      </span>
+    </div>
+    <div class="frow"><div class="flabel">발신기관명 <span class="req">*</span></div><div class="fval"><select class="fs" style="width:130px"><option>시흥시</option></select></div></div>
+    <div class="frow" id="frow-sender"><div class="flabel">발신명의 <span class="req">*</span></div><div class="fval"><select class="fs" id="f-sender" onchange="onSender()" style="width:180px"><option value="">발신명의 선택</option><option value="mayor">시흥시장</option><option value="dept">스마트도시과장</option></select></div></div>
+    <div class="frow"><div class="flabel">생산등록번호</div><div class="fval"><span style="font-size:11px;color:#aaa">자동 생성</span></div></div>
+    <div class="frow" id="frow-auto">
+      <div class="flabel">자동발송</div>
+      <div class="fval" style="gap:8px;flex-wrap:wrap;align-items:center;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;"><input type="checkbox" class="chk" id="chk-auto" onchange="onAuto()"> 자동발송 (결재 완료 시 자동 발송)</label>
+        <button class="sb" id="seal-btn1" onclick="openSealModal('관인')">관인</button>
+        <button class="sb" id="seal-btn2" onclick="openSealModal('서명')">서명</button>
+        <span id="seal-result" style="display:none;font-size:11px;padding:2px 8px;border-radius:10px;background:#d4edda;color:#1e7e4a;border:1px solid #1e7e4a;"></span>
+        <span id="seal-hint" style="font-size:11px;color:#aaa;">관인/서명이 선택되지 않았습니다.</span>
+      </div>
+    </div>
+    <div class="frow"><div class="flabel">문서공개여부 <span class="req">*</span></div><div class="fval">
+      <select class="fs" id="f-public" onchange="onPublic()" style="width:160px">
+        <option value="">문서공개여부 선택</option>
+        <option value="pub">대국민공개</option>
+        <option value="part">부분공개</option>
+        <option value="priv1">비공개(목록공개)</option>
+        <option value="priv2">비공개(목록비공개)</option>
+      </select>
+      <button type="button" onclick="toggleHintPop('public-hint-pop',event)" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:#f0f2f5;font-size:12px;cursor:pointer;font-weight:700;color:var(--light);padding:0;line-height:1;position:relative;">?
+        <div id="public-hint-pop" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#fff8e1;border:1px solid #f0c040;border-radius:5px;padding:7px 11px;font-size:11px;color:#5a4000;white-space:nowrap;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.15);font-weight:400;width:280px;white-space:normal;line-height:1.6;text-align:left;">
+          <b>부분공개</b>로 설정하면 본문은 공개되고<br>첨부파일은 공개여부를 개별 설정할 수 있습니다.
+          <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#f0c040;"></div>
+        </div>
+      </button>
+      <button type="button" onclick="openModal('law-modal')" style="border:1px solid var(--border);border-radius:2px;padding:3px 9px;font-family:inherit;font-size:11px;background:#f0f2f5;cursor:pointer;">관련법령</button>
+    </div></div>
+
+    <!-- 문서공개여부 연동 동적 행 - 문서공개여부 바로 아래 -->
+    <div id="frow-nondisclosure" style="display:none;">
+      <div class="frow">
+        <div class="flabel" style="align-items:flex-start;padding-top:7px;">문서비공개근거 <span class="req">*</span></div>
+        <div class="fval" style="flex-wrap:wrap;gap:4px;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 1호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 2호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 3호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 4호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 5호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 6호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 7호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 8호</label>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel">문서비공개사유 <span class="req">*</span></div>
+        <div class="fval"><input class="fi wide" placeholder="공개여부 비공개 사유를 반드시 입력바랍니다."></div>
+      </div>
+      <div class="frow">
+        <div class="flabel">공개일자</div>
+        <div class="fval" style="gap:8px;align-items:center;">
+          <input type="date" class="fi" style="width:140px;font-family:inherit;font-size:12px;">
+          <span style="font-size:11px;color:var(--err);font-weight:700;">※ 설정한 공개일자부터 대국민 공개로 전환됩니다.</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="frow-listpriv" style="display:none;">
+      <div class="frow">
+        <div class="flabel" style="align-items:flex-start;padding-top:7px;">목록비공개근거 <span class="req">*</span></div>
+        <div class="fval" style="flex-wrap:wrap;gap:4px;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 1호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 2호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 3호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 4호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 5호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 6호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 7호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 8호</label>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel">목록비공개사유 <span class="req">*</span></div>
+        <div class="fval"><input class="fi wide" placeholder="목록 비공개 사유를 입력하세요."></div>
+      </div>
+    </div>
+
+    <div id="frow-partopen" style="display:none;">
+      <div class="frow">
+        <div class="flabel" style="align-items:flex-start;padding-top:7px;">문서부분공개근거 <span class="req">*</span></div>
+        <div class="fval" style="flex-wrap:wrap;gap:4px;">
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 1호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 2호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 3호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 4호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 5호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 6호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 7호</label>
+          <label style="font-size:12px;display:flex;align-items:center;gap:3px;"><input type="checkbox" class="chk"> 8호</label>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel">문서부분공개사유 <span class="req">*</span></div>
+        <div class="fval"><input class="fi wide" placeholder="공개여부 비공개 사유를 반드시 입력바랍니다."></div>
+      </div>
+      <div class="frow">
+        <div class="flabel">공개일자</div>
+        <div class="fval" style="gap:8px;align-items:center;">
+          <input type="date" class="fi" style="width:140px;font-family:inherit;font-size:12px;">
+          <span style="font-size:11px;color:var(--err);font-weight:700;">※ 설정한 공개일자부터 대국민 공개로 전환됩니다.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="frow" id="frow-recv"><div class="flabel">수신 <span class="req">*</span></div><div class="fval"><input class="fi wide" id="f-recv-display" placeholder="수신지정 버튼으로 추가" readonly></div></div>
+    <div class="frow"><div class="flabel">(경유)</div><div class="fval"><input class="fi wide" placeholder="경유 기관 (없으면 공란)"></div></div>
+  </div>
+  <div style="border-bottom:1px solid var(--line);" id="section-manage">
+    <div class="sec-title">· 관리정보 <span class="badge todo" id="badge-manage">미완료</span></div>
+
+    <!-- 열람범위 / 열람제한기간 -->
+    <div id="frow-view-wrap">
+      <div class="frow">
+        <div class="flabel">열람범위 <span class="req">*</span></div>
+        <div class="fval" style="gap:6px;align-items:center;">
+          <select class="fs" id="f-view" onchange="onView()" style="width:150px">
+            <option value="">선택</option>
+            <option value="org">기관</option>
+            <option value="dept">부서</option>
+            <option value="me">개인</option>
+          </select>
+          <button type="button" onclick="toggleHintPop('view-hint-pop',event)" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:#f0f2f5;font-size:12px;cursor:pointer;font-weight:700;color:var(--light);padding:0;line-height:1;position:relative;">?
+            <div id="view-hint-pop" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--blue);border-radius:5px;padding:0;font-size:11px;color:var(--ink);z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.18);font-weight:400;width:420px;text-align:left;max-height:60vh;overflow-y:auto;">
+              <div style="background:var(--blue);color:#fff;padding:7px 12px;font-size:12px;font-weight:700;">열람범위 도움말</div>
+              <div style="padding:12px 14px;line-height:1.8;font-size:11px;">
+                <p style="font-weight:700;margin-bottom:4px;">· 문서 공개여부와 열람범위/열람제한기간, 문서보안의 차이</p>
+                <p style="color:var(--muted);margin-bottom:8px;">– 문서 공개여부, 열람범위/열람제한기간, 문서보안은 모두 별개의 기능을 수행합니다.</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:4px;">정의</p>
+                  <p>① 문서 공개여부: 「공공기관의 정보공개에 관한 법률」에 따라 정보공개포털 등에서의 공개 여부를 판단하는 값으로 대국민공개/부분공개/비공개로 나뉨.</p>
+                  <p>② 열람범위/열람제한기간 : 온나라 내 사용자의 열람범위 및 기간을 설정하는 값.<br>– 단, 문서 공개여부가 대국민공개인 문서의 경우 이미 대외 공개인 문서이기 때문에 별도의 열람범위/열람제한기간 설정 불가능</p>
+                  <p>③ 문서보안 : 문서 열람 시 본인의 결재 비밀번호를 입력 후 열람할 수 있도록 지원하는 기능</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 열람범위에 따른 열람 대상</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:4px;">대상</p>
+                  <p>– 기관: 본부 및 소속기관 포함 모든 사용자</p>
+                  <p>– 실국: 실국 또는 소속기관(1차) 하위 부서의 모든 사용자</p>
+                  <p>– 부서: 부서 내 모든 사용자</p>
+                  <p>– 열람불가: 보고경로 내 사용자, 특정 권한이 존재하는 모든 사용자</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 열람불가 문서 조회 권한</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:4px;">사용자 권한</p>
+                  <p>–보고(처리)경로자</p>
+                  <p>–공유자/공람자</p>
+                  <p>–과제카드담당자</p>
+                  <p>–부서장</p>
+                  <p>–처리과 문서담당자(5220) ※ 일반적인 서무 권한자가 가지고 있는 권한</p>
+                  <p>–문서과 문서담당자(5210) ※ 접수문서만 해당</p>
+                  <p>–기관 관리과제(카드) 관리자(5004)</p>
+                  <p>–기관 단위과제(카드) 관리자(5003)</p>
+                  <p>–소속기관관리자(4003) ※ 생산문서의 경우 시스템관리 &gt; 문서관리카드 메뉴에서만 조회가능</p>
+                  <p>–기관관리자(4002)</p>
+                  <p>–시스템관리자(4001)</p>
+                  <p>–정책의사결정권자(9001)</p>
+                  <p>–업무인계인수 받은 사용자 ※생산문서만 해당</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 기능 사용 예시</p>
+                <p>1) 열람범위가 기관이고 문서보안이 걸려있는 문서<br>: 문서보안이 걸려있더라도 열람범위가 기관이기 때문에, 타 부서원이 결재 비밀번호를 입력하면 문서 열람 가능</p>
+                <p style="margin-top:4px;">2) 열람범위가 부서이고 열람제한기간이 설정되지 않은 문서<br>: 부서원은 열람이 가능하고, 타 부서원은 열람이 불가능</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="flabel">열람제한기간</div>
+        <div class="fval" style="gap:6px;align-items:center;">
+          <select class="fs" style="width:150px">
+            <option>설정안함</option><option>1년</option><option>3년</option><option>5년</option>
+          </select>
+          <button type="button" onclick="toggleHintPop('period-hint-pop',event)" style="width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:#f0f2f5;font-size:12px;cursor:pointer;font-weight:700;color:var(--light);padding:0;line-height:1;position:relative;">?
+            <div id="period-hint-pop" style="display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--blue);border-radius:5px;padding:0;font-size:11px;color:var(--ink);z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.18);font-weight:400;width:380px;text-align:left;max-height:60vh;overflow-y:auto;">
+              <div style="background:var(--blue);color:#fff;padding:7px 12px;font-size:12px;font-weight:700;">열람제한기간 도움말</div>
+              <div style="padding:12px 14px;line-height:1.8;font-size:11px;">
+                <p style="font-weight:700;margin-bottom:4px;">· 문서 공개여부와 열람범위/열람제한기간, 문서보안의 차이</p>
+                <p style="color:var(--muted);margin-bottom:8px;">– 문서 공개여부, 열람범위/열람제한기간, 문서보안은 모두 별개의 기능을 수행합니다.</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:4px;">정의</p>
+                  <p>① 문서 공개여부: 「공공기관의 정보공개에 관한 법률」에 따라 정보공개포털 등에서의 공개 여부를 판단하는 값으로 대국민공개/부분공개/비공개로 나뉨.</p>
+                  <p>② 열람범위/열람제한기간 : 온나라 내 사용자의 열람범위 및 기간을 설정하는 값.<br>– 단, 문서 공개여부가 대국민공개인 문서의 경우 이미 대외 공개인 문서이기 때문에 별도의 열람범위/열람제한기간 설정 불가능</p>
+                  <p>③ 문서보안 : 문서 열람 시 본인의 결재 비밀번호를 입력 후 열람할 수 있도록 지원하는 기능</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 열람제한기간 설정 기한</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:6px;">
+                  <p style="font-weight:700;margin-bottom:3px;">생산문서</p>
+                  <p>– 결재완료일까지: 열람제한 설정을 결재가 진행 중일 때까지만 설정</p>
+                  <p>– 지정날짜까지: 사용자가 직접 설정한 날짜까지 열람제한기간 적용 가능</p>
+                </div>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:3px;">접수문서</p>
+                  <p>– 지정날짜까지: 사용자가 직접 설정한 날짜까지 열람제한기간 적용 가능</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 열람제한기간 문서 조회 권한</p>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:6px;">
+                  <p style="font-weight:700;margin-bottom:3px;">생산문서</p>
+                  <p>– 보고(처리)경로자</p>
+                  <p>– 공유자</p>
+                  <p>– 시스템관리자(4001)</p>
+                  <p>– 업무 인계인수 받은 사용자</p>
+                </div>
+                <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
+                  <p style="font-weight:700;margin-bottom:3px;">접수문서</p>
+                  <p>– 보고(처리)경로자</p>
+                  <p>– 공람자</p>
+                  <p>– 처리과 문서담당자(5220)</p>
+                  <p>– 문서과 문서담당자(5210)</p>
+                  <p>– 소속기관관리자(4003)</p>
+                  <p>– 기관관리자(4002)</p>
+                  <p>– 시스템관리자(4001)</p>
+                  <p>– 정책의사결정권자(9001)</p>
+                </div>
+                <p style="font-weight:700;margin-bottom:4px;">· 기능 사용 예시</p>
+                <p>1) 열람범위가 기관이고 문서보안이 걸려있는 문서<br>: 문서보안이 걸려있더라도 열람범위가 기관이기 때문에, 타 부서원이 결재 비밀번호를 입력하면 문서 열람 가능</p>
+                <p style="margin-top:4px;">2) 열람범위가 부서이고 열람제한기간이 설정되지 않은 문서<br>: 부서원은 열람이 가능하고, 타 부서원은 열람이 불가능</p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 본문 편집창 -->
+<div class="sim-wrap body-editor" id="body-editor">
+  <div class="popup-header"><span>문서관리카드 · 본문작성 실습</span><div class="right">표준기안문 | 인쇄 ✕</div></div>
+  <div class="toolbar">
+    <button class="tb done">문서카드</button>
+    <button class="tb done">경로지정</button>
+    <button class="tb done">수신지정</button>
+    <button class="tb" style="margin-left:auto;background:#888;" onclick="resetBodyEditor()">초기화</button>
+    <button class="tb" style="background:var(--accent);font-weight:700;" onclick="gradeBody()">✅ 채점하기</button>
+  </div>
+  <div class="be-grid">
+
+    <!-- 왼쪽: 문제 -->
+    <div class="be-col">
+      <div class="be-col-hd">📋 문제 — 아래 내용을 바탕으로 공문을 작성하세요<span class="be-badge q">문제</span></div>
+      <div class="be-doc-bg">
+        <div class="q-card">
+          <div class="q-ttl">📌 공문 작성 미션</div>
+          <div class="q-mission">스마트도시과 담당자로서<br><b id="q-recv-name">수원시 스마트도시과</b>에 <b>스마트도시 우수사례 공유 협조</b>를 요청하는 공문을 작성하시오.</div>
+          <div class="q-tbl">
+            <div class="q-tbl-hd">📂 사용할 내용 (재료)</div>
+            <div class="q-row"><div class="q-lbl">수신</div><div class="q-val" id="q-recv-display">—</div></div>
+            <div class="q-row"><div class="q-lbl">근거법령</div><div class="q-val">스마트도시 조성 및 산업진흥 등에 관한 법률 제2조</div></div>
+            <div class="q-row"><div class="q-lbl">일시</div><div class="q-val">2025년 9월 6일 토요일 오후 3시</div></div>
+            <div class="q-row"><div class="q-lbl">장소</div><div class="q-val">시흥시청 스마트시티센터 3층 회의실</div></div>
+            <div class="q-row"><div class="q-lbl">대상</div><div class="q-val" id="q-target-display">담당 공무원</div></div>
+            <div class="q-row"><div class="q-lbl">내용</div><div class="q-val">시흥시 스마트도시 플랫폼 운영 현황 공유</div></div>
+            <div class="q-row"><div class="q-lbl">붙임 1</div><div class="q-val">스마트도시 우수사례 자료집 1부</div></div>
+            <div class="q-row"><div class="q-lbl">붙임 2</div><div class="q-val">참석 신청서 서식 1부</div></div>
+          </div>
+          <div class="q-hints">
+            <div class="q-hints-hd">⚠️ 형식 주의사항 (10가지 채점)</div>
+            <div class="q-hint">날짜 표기 방식</div>
+            <div class="q-hint">제목 끝 마침표</div>
+            <div class="q-hint">본문 시작 들여쓰기</div>
+            <div class="q-hint">법령명 낫표 「 」</div>
+            <div class="q-hint">시간 24시각제</div>
+            <div class="q-hint">끝. 위치와 띄어쓰기</div>
+            <div class="q-hint">붙임 쌍점 여부</div>
+            <div class="q-hint">붙임 2개 이상일 때 끝. 위치</div>
+            <div class="q-hint">항목 기호 순서 (1. 가. 1) …)</div>
+            <div class="q-hint">쌍점 앞뒤 공백</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 작성 -->
+    <div class="be-col">
+      <div class="be-col-hd">✏️ 형식에 맞게 직접 작성하세요<span class="be-badge w">작성중</span></div>
+      <div class="be-doc-bg">
+        <div class="doc-letter">
+          <div class="doc-lhd">대한민국 대표 도시의 꿈, K-시흥시</div>
+          <div class="doc-ltitle"><span class="orgname">시 &nbsp; 흥 &nbsp; 시</span></div>
+          <div class="doc-lfields">
+            <div class="doc-lrow"><div class="doc-llabel">수신</div><div class="doc-linput"><input id="doc-susin" placeholder="수신처 참조" readonly style="color:var(--blue);font-weight:600;background:#f8faff;"></div></div>
+            <div class="doc-lrow"><div class="doc-llabel">(경유)</div><div class="doc-linput"><input placeholder=""></div></div>
+            <div class="doc-lrow"><div class="doc-llabel">제목</div><div class="doc-linput"><input id="doc-title" placeholder="제목을 입력하세요" style="font-weight:700;"></div></div>
+          </div>
+          <div class="doc-lbody">
+            <div class="doc-lbody-hint">본문을 입력하십시오</div>
+            <textarea class="doc-body-ta" id="doc-body-text" rows="10" placeholder="여기에 본문을 작성하세요."></textarea>
+          </div>
+          <div class="doc-attach">
+            <div class="doc-attach-lbl">붙임</div>
+            <textarea class="doc-attach-ta" id="doc-attach-text" rows="3" placeholder="붙임 내용을 입력하세요."></textarea>
+          </div>
+          <div class="doc-footer">
+            <div class="doc-footer-row"><div class="doc-fl">시행</div><div class="doc-fv">스마트도시과-0000 (2025. 9. 6.)</div><div class="doc-fl" style="border-left:1px solid #bbb;">접수</div><div class="doc-fv"></div></div>
+            <div class="doc-faddr">우 15010 경기도 시흥시 배곧4로 94-52 / www.siheung.go.kr</div>
+            <div class="doc-fcontact">전화번호 031-310-3609 팩스번호 031-380-5395 / <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1b737475787d7c5b7074697e7a357069">[email&#160;protected]</a></div>
+            <div class="doc-fnotice">시흥시 공직자 부조리 신고 &gt; 열린행정 &gt; 청렴한시흥 &gt; 부패신고</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 채점 바 -->
+  <div class="grade-bar">
+    <div class="grade-score" id="grade-score">채점 전</div>
+    <span class="gc pend" id="gc-1">① 날짜<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-2">② 제목<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-3">③ 본문시작<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-4">④ 법령명<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-5">⑤ 시간<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-6">⑥ 끝.<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-7">⑦ 붙임쌍점<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-8">⑧ 붙임끝.<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-9">⑨ 항목순서<span class="gc-tip">채점 전</span></span>
+    <span class="gc pend" id="gc-10">⑩ 쌍점공백<span class="gc-tip">채점 전</span></span>
+    <button class="sb" style="margin-left:auto;background:#6c3483;color:#fff;border-color:#6c3483;" onclick="openModal('answer-modal')">📋 모범답안</button>
+    <button class="sb" onclick="tbClick_card()">← 문서카드로</button>
+    <button class="sb pri" onclick="saveBody()">💾 본문저장</button>
+  </div>
+</div>
+
+<!-- 완료 -->
+<div class="sim-wrap complete-screen" id="complete-screen">
+  <div class="emoji">🎉</div>
+  <h2>공문 작성 실습 완료!</h2>
+  <p>온나라 문서관리카드 전체 흐름을 익혔습니다.</p>
+  <div class="summary-box">① 문서작성 → ② 제목 → ③ 과제카드 → ④ 경로지정<br>⑤ 수신지정 → ⑥ 발신명의 → ⑦ 자동발송+관인/서명<br>⑧ 공개/열람 → ⑨ 임시저장 → ⑩ 본문작성+채점 → 완료</div>
+  <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;justify-content:center;">
+    <button class="retry-btn" style="background:#1a7f4b;" onclick="renderMyWork()">📄 내가 쓴 공문 보기</button>
+    <button class="retry-btn" onclick="location.reload()">🔄 처음부터 다시 실습</button>
+  </div>
+</div>
+
+</div>
+
+<!-- 우측 가이드 -->
+<div class="right-panel">
+  <div class="guide-card">
+    <div class="guide-hd">📋 작성 순서 가이드</div>
+    <div class="guide-body" id="guide-body">
+      <div class="sg done" id="g0"><span class="num d">✓</span> 문서작성 클릭<small>팝업이 열린 상태로 시작</small></div>
+      <div class="sg active" id="g1"><span class="num a" id="gn1">②</span> 제목 입력<small>공문 제목 명확하게</small></div>
+      <div class="sg pend" id="g2"><span class="num" id="gn2">③</span> 과제카드명 선택<small>단위 / 관리 중 선택</small></div>
+      <div class="sg pend" id="g3"><span class="num" id="gn3">④</span> 경로지정 (결재선)<small>본청/소속기관 구분 선택</small></div>
+      <div class="sg pend" id="g4"><span class="num" id="gn4">⑤</span> 수신지정<small>조직도 트리에서 부서 선택</small></div>
+      <div class="sg pend" id="g5"><span class="num" id="gn5">⑥</span> 발신명의 선택<small>대외공문 = 시흥시장</small></div>
+      <div class="sg pend" id="g6"><span class="num" id="gn6">⑦</span> 자동발송 + 관인/서명<small>관인날인 또는 서명 선택</small></div>
+      <div class="sg pend" id="g7"><span class="num" id="gn7">⑧</span> 공개여부 · 열람범위<small>두 항목 모두 필수</small></div>
+      <div class="sg pend" id="g8"><span class="num" id="gn8">⑨</span> 임시저장<small>저장 안 하면 내용 날아감!</small></div>
+      <div class="sg pend" id="g9"><span class="num" id="gn9">⑩</span> 본문작성 + 채점<small>형식에 맞게 작성 후 채점</small></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 보고경로 모달 -->
+<div class="modal" id="route-modal">
+  <div class="modal-box">
+    <div class="modal-hd">보고경로지정<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:11px;opacity:.75;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:10px;">📍 스마트도시과</span><span class="close" onclick="closeModal('route-modal')">✕</span></div></div>
+    <div class="rm-body">
+      <div class="rm-tree-wrap">
+        <div class="rm-tabs"><div class="rm-tab active">조직도</div><div class="rm-tab">보고경로그룹</div></div>
+        <div class="rm-tree-items" id="rm-tree-items"></div>
+        <div class="rm-search-row"><select><option>이름</option><option>직위</option></select><input placeholder="검색"><button style="border:1px solid var(--border);background:#f0f2f5;border-radius:2px;cursor:pointer;padding:2px 6px;font-size:11px;">🔍</button></div>
+      </div>
+      <div class="rm-right">
+        <div class="rm-center">
+          <div class="rm-person-wrap"><table class="rm-person-tbl"><thead><tr><th>직위(직급)</th><th>팀/계</th><th>부서</th><th>성명</th></tr></thead><tbody id="rm-person-tbody"></tbody></table></div>
+          <div class="rm-arrows"><button class="rm-arr-btn" onclick="addToRoute()">∨</button><button class="rm-arr-btn" onclick="removeFromRoute()">∧</button></div>
+          <div class="rm-selected-wrap"><table class="rm-sel-tbl"><thead><tr><th style="width:22px;"></th><th>기관명</th><th>부서</th><th>팀/계</th><th>직위(직급)</th><th>성명</th><th>구분</th></tr></thead><tbody id="rm-sel-tbody"><tr class="fixed-row"><td><input type="checkbox" disabled></td><td>경기시흥</td><td>스마트도시과</td><td></td><td>주무관</td><td>박희원</td><td>기안</td></tr></tbody></table></div>
+        </div>
+        <div class="rm-gubun-wrap">
+          <div class="rm-gubun-title">· 구분</div>
+          <label><input type="radio" name="rm-gubun" value="결재" style="accent-color:var(--blue2);"> 결재</label>
+          <label><input type="radio" name="rm-gubun" value="전결" style="accent-color:var(--blue2);"> 전결</label>
+          <label><input type="radio" name="rm-gubun" value="대결" style="accent-color:var(--blue2);"> 대결</label>
+          <label><input type="radio" name="rm-gubun" value="검토" checked style="accent-color:var(--blue2);"> 검토</label>
+          <label><input type="radio" name="rm-gubun" value="협조" style="accent-color:var(--blue2);"> 협조</label>
+        </div>
+      </div>
+    </div>
+    <div class="rm-footer"><button class="sb" onclick="closeModal('route-modal')">취소</button><button class="sb pri" onclick="confirmRoute()" style="padding:5px 26px;">확인</button></div>
+  </div>
+</div>
+
+<!-- 수신 모달 -->
+<div class="modal" id="recv-modal">
+  <div class="modal-box" style="width:640px;max-height:88vh;display:flex;flex-direction:column;">
+    <div class="modal-hd">수신처지정 <span class="close" onclick="closeModal('recv-modal')">✕</span></div>
+
+    <!-- 탭 -->
+    <div style="display:flex;border-bottom:2px solid var(--line);background:#f5f7fa;flex-shrink:0;">
+      <div id="recv-tab-inner" onclick="switchRecvTab('inner')" style="padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;border-bottom:2px solid var(--blue);margin-bottom:-2px;color:var(--blue);background:#fff;">대내</div>
+      <div id="recv-tab-outer" onclick="switchRecvTab('outer')" style="padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;color:var(--light);">대외</div>
+      <div style="padding:8px 18px;font-size:12px;color:#ccc;cursor:not-allowed;">문서24 수신처</div>
+      <div style="padding:8px 18px;font-size:12px;color:#ccc;cursor:not-allowed;">외부</div>
+      <div style="padding:8px 18px;font-size:12px;color:#ccc;cursor:not-allowed;">수신그룹</div>
+    </div>
+
+    <!-- 대내 탭 -->
+    <div id="recv-pane-inner" style="display:flex;flex:1;overflow:hidden;">
+      <div class="org-tree-wrap" id="org-tree"></div>
+      <div class="recv-right">
+        <div class="recv-header">선택된 수신처</div>
+        <div class="recv-selected-list" id="recv-list"><div class="rs-empty">좌측 조직도에서 부서를 선택하세요</div></div>
+        <div class="recv-footer"><button class="sb" onclick="closeModal('recv-modal')">취소</button><button class="sb pri" onclick="confirmRecv()">확인</button></div>
+      </div>
+    </div>
+
+    <!-- 대외 탭 -->
+    <div id="recv-pane-outer" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+      <div style="display:flex;flex:1;overflow:hidden;">
+        <!-- 대외 조직도 트리 -->
+        <div style="width:260px;border-right:1px solid var(--line);overflow-y:auto;padding:8px 0;flex-shrink:0;font-size:12px;" id="outer-org-tree"></div>
+        <!-- 선택된 수신처 목록 -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:6px 10px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;color:var(--blue);">선택된 수신처</div>
+          <div style="flex:1;overflow-y:auto;padding:8px 10px;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;" id="outer-recv-table">
+              <thead>
+                <tr style="background:#e8edf2;">
+                  <th style="border:1px solid var(--border);padding:5px 8px;"></th>
+                  <th style="border:1px solid var(--border);padding:5px 8px;">수신기관</th>
+                  <th style="border:1px solid var(--border);padding:5px 8px;">참조기관</th>
+                  <th style="border:1px solid var(--border);padding:5px 8px;">수신자기호</th>
+                </tr>
+              </thead>
+              <tbody id="outer-recv-tbody">
+                <tr><td colspan="4" style="text-align:center;padding:16px;color:#aaa;">좌측 조직도에서 부서를 선택하세요</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:8px 10px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:6px;">
+            <button class="sb" onclick="closeModal('recv-modal')">취소</button>
+            <button class="sb pri" onclick="confirmRecvOuter()">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 내가 쓴 공문 보기 모달 -->
+<div class="modal" id="mywork-modal">
+  <div class="modal-box" style="width:680px;max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-hd" style="background:#1a7f4b;">
+      📄 내가 쓴 공문
+      <span class="close" onclick="closeModal('mywork-modal')">✕</span>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:16px 20px;background:#e8e8e8;">
+      <div id="mywork-letter" style="background:#fff;border:1px solid #bbb;max-width:100%;padding:20px 24px 14px;box-shadow:0 2px 10px rgba(0,0,0,.1);font-family:'맑은 고딕',monospace;font-size:11pt;line-height:2.0;">
+        <!-- JS로 채움 -->
+      </div>
+    </div>
+    <div style="padding:9px 14px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);">
+      <button class="sb" onclick="closeModal('mywork-modal')" style="padding:5px 20px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 모범답안 모달 -->
+<div class="modal" id="answer-modal">
+  <div class="modal-box" style="width:680px;max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-hd" style="background:#6c3483;">
+      📋 모범답안
+      <span class="close" onclick="closeModal('answer-modal')">✕</span>
+    </div>
+    <div style="overflow-y:auto;flex:1;">
+      <!-- 포인트별 해설 -->
+      <div style="padding:12px 16px;background:#f9f0ff;border-bottom:1px solid #ddd;font-size:11px;color:#6c3483;line-height:1.7;">
+        ✅ 아래는 10가지 형식을 모두 올바르게 작성한 모범답안입니다. 각 포인트를 확인해보세요.
+      </div>
+      <!-- 공문 양식 -->
+      <div style="padding:16px 20px;background:#e8e8e8;">
+        <div style="background:#fff;border:1px solid #bbb;max-width:100%;padding:20px 24px 14px;box-shadow:0 2px 10px rgba(0,0,0,.1);font-family:'맑은 고딕',monospace;font-size:11pt;line-height:2.0;">
+
+          <div style="text-align:center;border:1px dashed #c00;padding:4px;font-size:10px;color:#555;">대한민국 대표 도시의 꿈, K-시흥시</div>
+          <div style="border:1px dashed #c00;border-top:none;text-align:center;padding:8px;font-size:20pt;letter-spacing:12px;font-weight:400;">시 &nbsp; 흥 &nbsp; 시</div>
+
+          <div style="border:1px dashed #c00;border-top:none;">
+            <div style="display:flex;border-bottom:1px dashed #c00;">
+              <div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;">수신</div>
+              <div style="flex:1;padding:3px 8px;font-size:10pt;">수원시 스마트도시과장</div>
+            </div>
+            <div style="display:flex;border-bottom:1px dashed #c00;">
+              <div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;white-space:nowrap;">(경유)</div>
+              <div style="flex:1;padding:3px 8px;"></div>
+            </div>
+            <div style="display:flex;">
+              <div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;">제목</div>
+              <div style="flex:1;padding:3px 8px;font-size:10pt;font-weight:700;">스마트도시 우수사례 공유 협조 요청
+                <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:400;">② 마침표 없음</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;padding:0 2px;font-size:10.5pt;">
+            <div>1. 귀 기관의 무궁한 발전을 기원합니다.
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">③ 들여쓰기 없이 왼쪽부터</span>
+            </div>
+            <div>2. 「스마트도시 조성 및 산업진흥 등에 관한 법률」 제2조에 따라 아래와 같이 협조를 요청하오니 검토 후 회신하여 주시기 바랍니다.
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">④ 낫표 「 」</span>
+            </div>
+            <div style="padding-left:14px;">가. 일시: 2025. 9. 6.(토) 15:00
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">① 날짜</span>
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:2px;">⑤ 24시각제</span>
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:2px;">⑩ 쌍점 앞붙임</span>
+            </div>
+            <div style="padding-left:14px;">나. 장소: 시흥시청 스마트시티센터 3층 회의실</div>
+            <div style="padding-left:14px;">다. 대상: 수원시 스마트도시과 담당 공무원</div>
+            <div style="padding-left:14px;">라. 내용: 시흥시 스마트도시 플랫폼 운영 현황 공유
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">⑨ 항목 가.나.다.라. 순</span>
+            </div>
+            <div>3. 관련 자료는 붙임을 참고하시기 바랍니다.&nbsp;&nbsp;끝.
+              <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">⑥ 2칸 띄고 끝.</span>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;padding:8px 2px 0;border-top:1px dashed #eee;display:flex;gap:6px;font-size:10.5pt;">
+            <span style="font-weight:700;white-space:nowrap;">붙임</span>
+            <span style="white-space:nowrap;">&nbsp;&nbsp;</span>
+            <div>
+              <div>1. 스마트도시 우수사례 자료집 1부.
+                <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">⑦ 붙임 뒤 2칸·쌍점 없음</span>
+              </div>
+              <div>2. 참석 신청서 서식 1부.&nbsp;&nbsp;끝.
+                <span style="display:inline-block;background:#e8f4fd;border:1px solid #5dade2;color:#1a5276;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;">⑧ 마지막 항목 뒤 끝.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div style="padding:9px 14px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);">
+      <button class="sb" onclick="closeModal('answer-modal')" style="padding:5px 20px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 관련법령 모달 -->
+<div class="modal" id="law-modal">
+  <div class="modal-box" style="width:700px;max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-hd">
+      <span style="font-weight:700;font-size:13px;">공공기관의 정보공개에 관한 법률</span>
+      <span class="close" onclick="closeModal('law-modal')">✕</span>
+    </div>
+    <div style="overflow-y:auto;padding:16px 20px;font-size:12px;line-height:1.9;color:#1a1a2e;">
+      <p style="margin-bottom:12px;"><b>· 제9조 (비공개대상정보)</b></p>
+      <p style="margin-bottom:10px;">① 공공기관이 보유·관리하는 정보는 공개대상이 된다. 다만, 다음 각호의 1에 해당하는 정보에 대하여는 이를 공개하지 아니할 수 있다.</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">
+        <tr style="background:#f0f3f7;">
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">1. 다른 법률 또는 법률이 위임한 명령(국회규칙·대법원규칙·헌법재판소규칙·중앙선거관리위원회규칙·대통령령 및 조례에 한한다)에 의하여 비밀 또는 비공개 사항으로 규정된 정보</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">2. 국가안전보장·국방·통일·외교관계 등에 관한 사항으로서 공개될 경우 국가의 중대한 이익을 현저히 해할 우려가 있다고 인정되는 정보</td>
+        </tr>
+        <tr style="background:#f0f3f7;">
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">3. 공개될 경우 국민의 생명·신체 및 재산의 보호에 현저한 지장을 초래할 우려가 있다고 인정되는 정보</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">4. 진행중인 재판에 관련된 정보와 범죄의 예방, 수사, 공소의 제기 및 유지, 형의 집행, 교정, 보안처분에 관한 사항으로서 공개될 경우 그 직무수행을 현저히 곤란하게 하거나 형사피고인의 공정한 재판을 받을 권리를 침해한다고 인정할 만한 상당한 이유가 있는 정보</td>
+        </tr>
+        <tr style="background:#f0f3f7;">
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">5. 감사·감독·검사·시험·규제·입찰계약·기술개발·인사관리·의사결정과정 또는 내부검토과정에 있는 사항 등으로서 공개될 경우 업무의 공정한 수행이나 연구·개발에 현저한 지장을 초래한다고 인정할 만한 상당한 이유가 있는 정보</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">
+            6. 해당 정보에 포함되어 있는 이름·주민등록번호 등 개인에 관한 사항으로서 공개될 경우 개인의 사생활의 비밀 또는 자유를 침해할 우려가 있다고 인정되는 정보. 다만, 다음에 열거한 개인에 관한 정보는 제외한다.<br>
+            <span style="padding-left:12px;display:block;">가. 법령이 정하는 바에 따라 열람할 수 있는 정보</span>
+            <span style="padding-left:12px;display:block;">나. 공공기관이 공표를 목적으로 작성하거나 취득한 정보로서 개인의 사생활의 비밀과 자유를 부당하게 침해하지 않는 정보</span>
+            <span style="padding-left:12px;display:block;">다. 공공기관이 작성하거나 취득한 정보로서 공개하는 것이 공익 또는 개인의 권리구제를 위하여 필요하다고 인정되는 정보</span>
+            <span style="padding-left:12px;display:block;">라. 직무를 수행한 공무원의 성명·직위</span>
+            <span style="padding-left:12px;display:block;">마. 공개하는 것이 공익을 위하여 필요한 경우로서 법령에 의하여 국가 또는 지방자치단체가 업무의 일부를 위탁 또는 위촉한 개인의 성명·직업</span>
+          </td>
+        </tr>
+        <tr style="background:#f0f3f7;">
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">
+            7. 법인·단체 또는 개인(이하 "법인등"이라 한다)의 경영·영업상 비밀에 관한 사항으로서 공개될 경우 법인등의 정당한 이익을 현저히 해할 우려가 있다고 인정되는 정보. 다만, 다음에 열거한 정보를 제외한다.<br>
+            <span style="padding-left:12px;display:block;">가. 사업활동에 의하여 발생하는 위해로부터 사람의 생명·신체 또는 건강을 보호하기 위하여 공개할 필요가 있는 정보</span>
+            <span style="padding-left:12px;display:block;">나. 위법·부당한 사업활동으로부터 국민의 재산 또는 생활을 보호하기 위하여 공개할 필요가 있는 정보</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #c8d0dc;padding:7px 10px;line-height:1.7;">8. 공개될 경우 부동산 투기·매점매석 등으로 특정인에게 이익 또는 불이익을 줄 우려가 있다고 인정되는 정보</td>
+        </tr>
+      </table>
+
+      <p style="font-size:12px;line-height:1.8;color:#555;">② 공공기관은 제1항 각호의 1에 해당하는 정보가 기간의 경과 등으로 인하여 비공개의 필요성이 없어진 경우에는 해당 정보를 공개대상으로 하여야 한다.</p>
+    </div>
+    <div style="padding:9px 14px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);">
+      <button class="sb" onclick="closeModal('law-modal')" style="padding:5px 20px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 관인/서명 모달 -->
+<div class="modal" id="seal-modal">
+  <div class="modal-box" style="width:380px;">
+    <div class="modal-hd"><span id="seal-modal-title">관인 날인</span><span class="close" onclick="closeSealModal()">✕</span></div>
+    <div style="padding:18px;">
+      <div id="seal-step-auto"><div style="font-size:13px;margin-bottom:14px;">🖨️ <b>자동발송</b>으로 처리하시겠습니까?</div><div style="display:flex;gap:8px;justify-content:center;"><button class="sb pri" onclick="sealAutoYes()">예, 자동발송</button><button class="sb" onclick="closeSealModal()">취소</button></div></div>
+      <div id="seal-step-kanin" style="display:none;text-align:center;"><div style="margin-bottom:12px;"><svg width="80" height="80" viewBox="0 0 90 90"><rect x="5" y="5" width="80" height="80" fill="none" stroke="#c00" stroke-width="3"/><text x="45" y="32" text-anchor="middle" font-size="14" fill="#c00" font-weight="bold">시흥시</text><text x="45" y="52" text-anchor="middle" font-size="13" fill="#c00" font-weight="bold">장 인</text><text x="45" y="72" text-anchor="middle" font-size="11" fill="#c00">市長印</text></svg></div><div style="display:flex;gap:8px;justify-content:center;"><button class="sb pri" onclick="confirmSeal('관인날인')">확인</button><button class="sb" onclick="confirmSeal('관인생략')">생략</button><button class="sb" onclick="closeSealModal()">취소</button></div></div>
+      <div id="seal-step-sign" style="display:none;text-align:center;"><div style="font-family:'궁서',serif;font-size:28px;color:#222;margin-bottom:12px;">홍길동</div><div style="display:flex;gap:8px;justify-content:center;"><button class="sb pri" onclick="confirmSeal('서명')">확인</button><button class="sb" onclick="confirmSeal('서명생략')">생략</button><button class="sb" onclick="closeSealModal()">취소</button></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+var S={title:false,task:false,route:false,recv:false,sender:false,seal:false,auto:false,public_:false,view:false,saved:false};
+var selectedRecv=[];
+var sealModalType='';
+
+// 조직도 (v1 원본 그대로)
+var ORG = [
+  { name:'기획조정실', icon:'📁', children:[
+    {name:'정책기획과'},{name:'예산법무과'},{name:'세정과'},{name:'시세관리과'},{name:'징수과'},{name:'정보통신과'}
+  ]},
+  { name:'경제국', icon:'📁', children:[
+    {name:'일자리경제과'},{name:'노동지원과'},{name:'소상공인과'},{name:'기업지원과'},{name:'신산지경과'}
+  ]},
+  { name:'문화체육관광국', icon:'📁', children:[
+    {name:'문화예술과'},{name:'관광과'},{name:'서울이음과'},{name:'시흥아이브센터운영과'}
+  ]},
+  { name:'인천교통국', icon:'📁', children:[
+    {name:'시민안전과'},{name:'교통행정과'},{name:'대중교통과'},{name:'건설행정과'},{name:'도로시설과'}
+  ]},
+  { name:'복지국', icon:'📁', children:[
+    {name:'복지정책과'},{name:'생활복지과'},{name:'동합돌봄과'},{name:'노인복지과'},{name:'장애인복지과'}
+  ]},
+  { name:'성평등가족국', icon:'📁', children:[
+    {name:'성평등복지과'},{name:'아동돌봄과'},{name:'청년청소년과'},{name:'아주매경수건라'}
+  ]},
+  { name:'환경국', icon:'📁', children:[
+    {name:'환경정책과'},{name:'기후에너지과'},{name:'대기정책과'},{name:'자원순환과'}
+  ]},
+  { name:'공원녹지국', icon:'📁', children:[
+    {name:'공원조성과'},{name:'공계관리과'},{name:'녹지과'},{name:'생태하천과'}
+  ]},
+  { name:'도시주택국', icon:'📁', children:[
+    {name:'도시정책과'},{name:'경제자유구역과'},{name:'경관디자인과'},{name:'주택과'},{name:'건축허가과'},{name:'건축관리과'},{name:'스마트도시과'}
+  ]},
+  { name:'균형발전국', icon:'📁', children:[
+    {name:'균형발전과'},{name:'신도시사업과'},{name:'해양수산과'},{name:'철도과'}
+  ]},
+  { name:'행정국', icon:'📁', children:[
+    {name:'행정과'},{name:'주민자치과'},{name:'회계과'},{name:'시설교사과'},{name:'민원여권과'},{name:'토지정보과'}
+  ]},
+  { name:'━━ 소속기관 ━━', icon:'', children:[], divider:true },
+  { name:'보건소', icon:'🏥', children:[
+    {name:'보건정책과'},{name:'건강증진과'},{name:'건강돌봄과'},{name:'감염관리과'},{name:'정양보건지소'},{name:'위생과'}
+  ]},
+  { name:'농업기술센터', icon:'🌾', children:[
+    {name:'농업정책과'},{name:'친환경과'},{name:'농업기반과'}
+  ]},
+  { name:'평생교육원', icon:'🎓', children:[
+    {name:'평생학습과'},{name:'교육자치과'},{name:'송강도서관'},{name:'소래빛도서관'}
+  ]},
+  { name:'양은물사업소', icon:'💧', children:[
+    {name:'수도행정과'},{name:'수도시설과'},{name:'하수관리과'}
+  ]},
+  { name:'차량등록사업소', icon:'🚗', children:[
+    {name:'차량등록과'}
+  ]},
+  { name:'━━ 행정복지센터(동주민센터) ━━', icon:'', children:[], divider:true },
+  { name:'대야동', icon:'🏘️', children:[
+    {name:'대야동'},{name:'신천동'},{name:'안현동'},{name:'신흥동'}
+  ]},
+  { name:'신천동', icon:'🏘️', children:[
+    {name:'신천1동'},{name:'신천2동'},{name:'신천3동'},{name:'과림동'}
+  ]},
+  { name:'신현동', icon:'🏘️', children:[
+    {name:'신현동'},{name:'능곡동'},{name:'여성동'},{name:'국성동'}
+  ]},
+  { name:'연성동', icon:'🏘️', children:[
+    {name:'연성동'},{name:'매화동'},{name:'정왕1동'},{name:'정왕2동'}
+  ]},
+  { name:'목감동', icon:'🏘️', children:[
+    {name:'목감동'},{name:'거석동'},{name:'장곡동'},{name:'정왕3동'},{name:'정왕4동'}
+  ]},
+  { name:'배곧동', icon:'🏘️', children:[
+    {name:'배곧1동'},{name:'배곧2동'}
+  ]}
+];
+
+function renderTree() {
+  var wrap = document.getElementById('org-tree');
+  wrap.innerHTML = ORG.map(function(dept, di) { return buildDeptHTML(dept, di); }).join('');
+}
+function buildDeptHTML(dept, di) {
+  if (dept.divider) {
+    return '<div style="padding:4px 10px;font-size:10px;color:#aaa;font-weight:700;background:#f5f5f5;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 0;">'+dept.name+'</div>';
+  }
+  var hasChildren = dept.children && dept.children.length > 0;
+  var html = '<div class="tree-item" onclick="toggleDept('+di+', event)">'
+    + '<span class="toggle">'+(hasChildren ? '▶' : ' ')+'</span>'
+    + '<span class="icon">'+(dept.icon||'📁')+'</span>'
+    + '<span>'+dept.name+'</span></div>';
+  if (hasChildren) {
+    html += '<div class="tree-children" id="tc-'+di+'">';
+    dept.children.forEach(function(child, ci) {
+      var key = di+'-'+ci;
+      html += '<div class="tree-item" id="ti-'+key+'" onclick="selectRecv(\''+key+'\',\''+dept.name+'\',\''+child.name+'\')">'
+        + '<span class="toggle"> </span><span class="icon">📄</span><span>'+child.name+'</span></div>';
+    });
+    html += '</div>';
+  }
+  return html;
+}
+function toggleDept(di, e) {
+  e.stopPropagation();
+  var tc = document.getElementById('tc-'+di);
+  if (!tc) return;
+  var isOpen = tc.classList.toggle('open');
+  var toggle = e.currentTarget.querySelector('.toggle');
+  if (toggle) toggle.textContent = isOpen ? '▼' : '▶';
+}
+function selectRecv(key, deptName, teamName) {
+  var fullName = deptName + ' ' + teamName;
+  if (selectedRecv.find(function(r){ return r.key === key; })) { toast('이미 선택된 부서입니다', 'err'); return; }
+  selectedRecv.push({ key: key, name: fullName });
+  renderRecvList();
+  document.querySelectorAll('.tree-item').forEach(function(el){ el.classList.remove('selected'); });
+  var ti = document.getElementById('ti-'+key);
+  if (ti) ti.classList.add('selected');
+  toast('✅ ' + teamName + '장 추가됨');
+}
+function renderRecvList() {
+  var list = document.getElementById('recv-list');
+  if (selectedRecv.length === 0) {
+    list.innerHTML = '<div class="rs-empty">좌측 조직도에서 부서를 선택하세요</div>';
+    return;
+  }
+  list.innerHTML = selectedRecv.map(function(r, i) {
+    var parts = r.name.split(' ');
+    var head = parts[parts.length - 1] + '장';
+    return '<div class="recv-item"><span>📄 '+head+'</span><span class="del" onclick="removeRecv('+i+')">✕</span></div>';
+  }).join('');
+}
+function removeRecv(i) { selectedRecv.splice(i, 1); renderRecvList(); }
+function confirmRecv() {
+  if (selectedRecv.length === 0) { toast('수신처를 하나 이상 선택해주세요', 'err'); return; }
+  var names = selectedRecv.map(function(r) {
+    var parts = r.name.split(' ');
+    return parts[parts.length - 1] + '장';
+  }).join(', ');
+  document.getElementById('f-recv-display').value = names;
+  document.getElementById('f-recv-display').classList.add('ok');
+  S.recv = true;
+  closeModal('recv-modal');
+  toast('✅ 수신처 지정 완료');
+  updateUI();
+}
+
+// 보고경로
+var ROUTE_DEPT_DATA={
+  '스마트도시과':[
+    {pos:'스마트도시과장',team:'스마트도시과',dept:'스마트도시과',name:'임동현'},
+    {pos:'스마트도시팀장',team:'스마트도시과',dept:'스마트도시과',name:'노성식'},
+    {pos:'주무관',team:'스마트도시과',dept:'스마트도시과',name:'이소현'},
+    {pos:'주무관',team:'스마트도시과',dept:'스마트도시과',name:'류지호'},
+    {pos:'주무관',team:'스마트도시과',dept:'스마트도시과',name:'사재은'},
+    {pos:'주무관',team:'스마트도시과',dept:'스마트도시과',name:'박희원'}
+  ],
+  '배곧1동':[
+    {pos:'동장',team:'배곧1동',dept:'배곧1동',name:'김영복'},
+    {pos:'사무장',team:'배곧1동',dept:'배곧1동',name:'이재열'}
+  ]
+};
+var ROUTE_TREE=[{label:'경기시흥',icon:'🏛',children:[{name:'시장실',icon:'👤'},{name:'부시장실',icon:'👤'},{label:'도시주택국',icon:'📁',children:[{name:'도시정책과'},{name:'경제자유구역과'},{name:'경관디자인과'},{name:'주택과'},{name:'건축허가과'},{name:'건축관리과'},{name:'스마트도시과',selectable:true}]},{name:'배곧1동',selectable:true}]}];
+var rmSel=null,rmRows=[],rmDept='스마트도시과';
+function openRouteModal(){rmSel=null;rmRows=[];rmDept='스마트도시과';renderRouteTree();selectRouteDept('스마트도시과');renderRmSelTable();openModal('route-modal');}
+function renderRouteTree(){
+  var w=document.getElementById('rm-tree-items');
+  function rc(ch,d){var h='',p=d*12;ch.forEach(function(c){if(c.label){var g='rmgc_'+c.label.replace(/\s/g,'_');h+='<div class="rm-tree-dept" style="padding-left:'+(p+6)+'px;" onclick="toggleById(\''+g+'\')">📁 '+c.label+'</div><div id="'+g+'" style="display:block;">'+rc(c.children||[],d+1)+'</div>';}else if(c.selectable){var a=c.name==='스마트도시과';h+='<div class="rm-tree-child'+(a?' selected':'')+'" style="padding-left:'+(p+8)+'px;" onclick="selectRouteDept(\''+c.name+'\')">'+(c.icon||'👤')+' '+c.name+'</div>';}else{h+='<div class="rm-tree-child" style="padding-left:'+(p+8)+'px;color:#bbb;cursor:default;">'+(c.icon||'👤')+' '+c.name+'</div>';}});return h;}
+  var html='';ROUTE_TREE.forEach(function(g){html+='<div class="rm-tree-dept" style="font-weight:700;cursor:default;">'+g.icon+' '+g.label+'</div>'+rc(g.children||[],1);});w.innerHTML=html;
+}
+function toggleById(id){var el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+function selectRouteDept(name){
+  var ok=['스마트도시과','배곧1동'];
+  if(ok.indexOf(name)<0){toast('이 문서에서 선택할 수 없는 부서입니다','err');return;}
+  rmDept=name;rmSel=null;
+  document.querySelectorAll('.rm-tree-child').forEach(function(el){if(el.style.cursor!=='default')el.classList.toggle('selected',el.textContent.trim()===name);});
+  var members=ROUTE_DEPT_DATA[name]||[];
+  var tbody=document.getElementById('rm-person-tbody');
+  if(!members.length){tbody.innerHTML='<tr><td colspan="4" style="padding:16px;color:#aaa;text-align:center;">인원 정보 없음</td></tr>';return;}
+  tbody.innerHTML=members.map(function(m,i){return '<tr id="rmp-'+i+'" onclick="clickRP('+i+')"><td>'+m.pos+'</td><td style="color:#aaa;font-size:11px;">'+m.team+'</td><td style="color:#aaa;font-size:11px;">'+m.dept+'</td><td style="font-weight:600;">'+m.name+'</td></tr>';}).join('');
+}
+function clickRP(i){rmSel=i;document.querySelectorAll('#rm-person-tbody tr').forEach(function(tr,j){tr.classList.toggle('selected',j===i);});}
+function addToRoute(){if(rmSel===null){toast('인원을 선택해주세요','err');return;}var g=document.querySelector('input[name="rm-gubun"]:checked');if(!g){toast('구분을 선택해주세요','err');return;}var m=(ROUTE_DEPT_DATA[rmDept]||[])[rmSel];if(!m)return;rmRows.push(Object.assign({},m,{gubun:g.value}));renderRmSelTable();toast('✅ '+m.name+'('+g.value+') 추가');}
+function removeFromRoute(){if(!rmRows.length){toast('제거할 행이 없습니다','err');return;}var r=rmRows.pop();renderRmSelTable();toast('🗑 '+r.name+' 제거됨');}
+function renderRmSelTable(){var tb=document.getElementById('rm-sel-tbody');var fixed='<tr class="fixed-row"><td><input type="checkbox" disabled></td><td>경기시흥</td><td>스마트도시과</td><td></td><td>주무관</td><td>박희원</td><td>기안</td></tr>';var added=rmRows.map(function(r){return '<tr><td><input type="checkbox"></td><td>경기시흥</td><td>'+r.dept+'</td><td>'+r.team+'</td><td>'+r.pos+'</td><td style="font-weight:600;">'+r.name+'</td><td style="color:var(--blue2);font-weight:600;">'+r.gubun+'</td></tr>';}).join('');tb.innerHTML=fixed+added;}
+function confirmRoute(){if(!rmRows.length){toast('결재선 인원을 추가해주세요','err');return;}var hasD=rmRows.some(function(r){return ['결재','전결','대결'].indexOf(r.gubun)>=0;});if(!hasD){toast('결재/전결/대결 인원 최소 1명 필요','err');return;}var tb=document.getElementById('route-tbl').querySelector('tbody');var rows='<tr><td>기안</td><td>주무관</td><td>박희원</td><td></td><td></td><td></td></tr>';rmRows.forEach(function(r){rows+='<tr><td>'+r.gubun+'</td><td>'+r.pos+'</td><td>'+r.name+'</td><td></td><td></td><td></td></tr>';});tb.innerHTML=rows;S.route=true;document.getElementById('route-warn').style.display='none';document.getElementById('badge-route').textContent='완료';document.getElementById('badge-route').className='badge done2';closeModal('route-modal');toast('✅ 결재선 설정 완료');updateUI();}
+
+// 관인/서명
+function openSealModal(type){sealModalType=type;document.getElementById('seal-modal-title').textContent=type==='관인'?'관인 날인':'서명인 날인';document.getElementById('seal-step-auto').style.display='block';document.getElementById('seal-step-kanin').style.display='none';document.getElementById('seal-step-sign').style.display='none';openModal('seal-modal');}
+function closeSealModal(){closeModal('seal-modal');}
+function sealAutoYes(){document.getElementById('chk-auto').checked=true;S.auto=true;document.getElementById('seal-step-auto').style.display='none';if(sealModalType==='관인')document.getElementById('seal-step-kanin').style.display='block';else document.getElementById('seal-step-sign').style.display='block';}
+function confirmSeal(val){
+  var isInt = document.getElementById('chk-int').checked;
+  // 문서타입 vs 관인/서명 교차 검증
+  if (!val.includes('생략')) {
+    if (isInt && sealModalType === '관인') {
+      toast('⚠️ 내부결재 문서에는 관인이 아닌 서명을 사용합니다!', 'err');
+    } else if (!isInt && sealModalType === '서명') {
+      toast('⚠️ 대내외시행 문서에는 서명이 아닌 관인을 사용합니다!', 'err');
+    }
+  }
+  var r=document.getElementById('seal-result');
+  document.getElementById('seal-hint').style.display='none';
+  // 틀린 경우 배지를 주황색으로 표시
+  var isWrong = (!val.includes('생략')) && ((isInt && sealModalType==='관인') || (!isInt && sealModalType==='서명'));
+  r.textContent = (isWrong ? '⚠️ ' : '✅ ') + val;
+  r.style.display='inline-block';
+  r.style.background = isWrong ? '#fdf0e0' : '#d4edda';
+  r.style.borderColor = isWrong ? '#e67e22' : '#1e7e4a';
+  r.style.color = isWrong ? '#e67e22' : '#1e7e4a';
+  S.seal=true;
+  var b1=sealModalType==='관인'?1:2,b2=sealModalType==='관인'?2:1;
+  var btn=document.getElementById('seal-btn'+b1);
+  btn.textContent=val;
+  btn.style.background= isWrong ? '#fdf0e0' : '#d4edda';
+  btn.style.borderColor= isWrong ? '#e67e22' : '#1e7e4a';
+  btn.style.color= isWrong ? '#e67e22' : '#1e7e4a';
+  var other=document.getElementById('seal-btn'+b2);
+  other.disabled=true;other.style.background='#eee';other.style.color='#aaa';other.style.cursor='not-allowed';
+  closeModal('seal-modal');
+  if(!isWrong) toast('✅ '+val+' 선택 완료');
+  updateUI();
+}
+
+// 필드 이벤트
+function onTitle(){var v=document.getElementById('f-title').value.trim();S.title=v.length>=5;document.getElementById('f-title').className='fi wide'+(S.title?' ok':'');updateUI();}
+function onTask(){var v=document.getElementById('f-task').value;S.task=!!v;document.getElementById('f-task').className='fs'+(S.task?' ok':'');updateUI();if(S.task)toast('✅ 과제카드명 선택 완료');}
+function onTaskSearch(){if(!S.title){toast('제목을 먼저 입력해주세요','err');return;}document.getElementById('f-task').value='unit';onTask();}
+function onDocType(){
+  var isInt=document.getElementById('chk-int').checked;
+  var on='display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--blue2);background:#eef4fb;font-weight:700;color:var(--blue2);';
+  var off='display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--border);';
+  document.getElementById('lbl-int').style.cssText=isInt?on:off;
+  document.getElementById('lbl-ext').style.cssText=isInt?off:on;
+
+  if(isInt){
+    // 내부결재: 발신명의·자동발송 행 숨김, 수신지정 버튼 숨김, 수신란 고정
+    document.getElementById('frow-sender').style.display='none';
+    document.getElementById('frow-auto').style.display='none';
+    document.getElementById('btn-recv-wrap').style.display='none';
+    var recvInput=document.getElementById('f-recv-display');
+    recvInput.value='내부결재';
+    recvInput.style.color='var(--blue)';
+    recvInput.style.fontWeight='700';
+    // 상태값 자동 처리
+    S.sender=true; S.auto=true; S.seal=true; S.recv=true;
+    // 툴바 수신지정 버튼도 비활성
+    setBtn('tb-recv','done');
+    toast('📋 내부결재 — 수신/발신명의/자동발송 자동 처리');
+  } else {
+    // 대내외시행: 숨겼던 행 복원
+    document.getElementById('frow-sender').style.display='';
+    document.getElementById('frow-auto').style.display='';
+    document.getElementById('btn-recv-wrap').style.display='';
+    var recvInput=document.getElementById('f-recv-display');
+    recvInput.value='';
+    recvInput.style.color='';
+    recvInput.style.fontWeight='';
+    // 상태값 초기화
+    S.sender=false; S.auto=false; S.seal=false; S.recv=false;
+    // 발신명의 옵션
+    var sel=document.getElementById('f-sender');
+    sel.value=''; sel.className='fs';
+    sel.innerHTML='<option value="">발신명의 선택</option><option value="mayor">시흥시장</option><option value="dept">스마트도시과장</option>';
+    // 관인/서명 초기화
+    ['seal-btn1','seal-btn2'].forEach(function(id){var b=document.getElementById(id);b.textContent=id==='seal-btn1'?'관인':'서명';b.disabled=false;b.style.cssText='';});
+    document.getElementById('seal-result').style.display='none';
+    document.getElementById('seal-hint').style.display='inline';
+    document.getElementById('chk-auto').checked=false;
+    document.getElementById('f-recv-display').classList.remove('ok');
+    selectedRecv=[];
+    toast('📤 대내외시행 — 수신지정·발신명의를 선택하세요');
+  }
+  updateUI();
+}
+function onSender(){var v=document.getElementById('f-sender').value;S.sender=!!v;document.getElementById('f-sender').className='fs'+(S.sender?' ok':'');updateUI();if(S.sender)toast('✅ 발신명의 선택 완료');}
+function onAuto(){S.auto=document.getElementById('chk-auto').checked;if(!S.auto){S.seal=false;['seal-btn1','seal-btn2'].forEach(function(id){var b=document.getElementById(id);b.textContent=id==='seal-btn1'?'관인':'서명';b.disabled=false;b.style.cssText='';});document.getElementById('seal-result').style.display='none';document.getElementById('seal-hint').style.display='inline';toast('관인/서명 초기화','err');}else toast('✅ 자동발송 설정 완료');updateUI();}
+function toggleHintPop(id,e){
+  e.stopPropagation();
+  var all=['view-hint-pop','period-hint-pop','public-hint-pop'];
+  all.forEach(function(pid){
+    var el=document.getElementById(pid);
+    if(el) el.style.display=(pid===id&&el.style.display!=='block')?'block':'none';
+  });
+}
+document.addEventListener('click',function(){
+  ['view-hint-pop','period-hint-pop','public-hint-pop'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+});
+
+function onPublic(){
+  var v=document.getElementById('f-public').value;
+  S.public_=!!v;
+  document.getElementById('f-public').className='fs'+(S.public_?' ok':'');
+
+  // 동적 행 초기화
+  document.getElementById('frow-nondisclosure').style.display='none';
+  document.getElementById('frow-listpriv').style.display='none';
+  document.getElementById('frow-partopen').style.display='none';
+
+  // 관리정보(열람범위/열람제한기간) 활성/비활성
+  var viewWrap=document.getElementById('frow-view-wrap');
+  var viewSel=document.getElementById('f-view');
+
+  if(v==='pub'){
+    // 대국민공개 → 관리정보 비활성
+    viewWrap.style.opacity='0.4';
+    viewWrap.style.pointerEvents='none';
+    viewSel.value=''; S.view=true; // 대국민공개는 열람범위 불필요
+    toast('✅ 대국민공개 — 열람범위 설정이 자동 비활성화됩니다');
+  } else {
+    viewWrap.style.opacity='';
+    viewWrap.style.pointerEvents='';
+    if(v!=='') S.view=false;
+
+    if(v==='priv1'){
+      // 비공개(목록공개)
+      document.getElementById('frow-nondisclosure').style.display='block';
+      toast('📋 비공개(목록공개) — 비공개근거와 사유를 입력하세요');
+    } else if(v==='priv2'){
+      // 비공개(목록비공개)
+      document.getElementById('frow-nondisclosure').style.display='block';
+      document.getElementById('frow-listpriv').style.display='block';
+      toast('📋 비공개(목록비공개) — 비공개근거/사유, 목록비공개근거/사유를 입력하세요');
+    } else if(v==='part'){
+      // 부분공개
+      document.getElementById('frow-partopen').style.display='block';
+      toast('📋 부분공개 — 부분공개근거와 사유를 입력하세요');
+    }
+  }
+  updateUI(); checkManage();
+  if(S.public_) toast('✅ 문서공개여부 설정 완료');
+}
+function onView(){var v=document.getElementById('f-view').value;S.view=!!v;document.getElementById('f-view').className='fs'+(S.view?' ok':'');updateUI();checkManage();if(S.view)toast('✅ 열람범위 설정 완료');}
+function checkManage(){
+  var v=document.getElementById('f-public').value;
+  var ok=(v==='pub')?(S.public_):(S.public_&&S.view);
+  if(ok){document.getElementById('badge-manage').textContent='완료';document.getElementById('badge-manage').className='badge done2';}
+}
+
+// 툴바
+function tbClick(action){
+  if(action==='route'){if(!S.title||!S.task){toast('제목과 과제카드명을 먼저 입력해주세요','err');return;}openRouteModal();}
+  else if(action==='recv'){
+    if(!S.route){toast('경로지정을 먼저 완료해주세요','err');return;}
+    var isInt=document.getElementById('chk-int').checked;
+    outerSelectedRecv=[];
+    renderTree(); renderRecvList(); renderOuterRecvTable();
+    // 대내외시행이면 대외 탭 활성화 가능, 기본은 대내
+    switchRecvTab('inner');
+    openModal('recv-modal');
+  }
+  else if(action==='save'){
+    var isInt=document.getElementById('chk-int').checked;
+    if(!S.route){toast('경로지정을 먼저 완료해주세요','err');return;}
+    if(!S.recv){toast('수신지정을 먼저 완료해주세요','err');return;}
+    if(!isInt&&!S.sender){toast('발신명의를 선택해주세요','err');return;}
+    if(!isInt&&!S.auto&&!S.seal){toast('자동발송 또는 관인/서명을 선택해주세요','err');return;}
+    if(!S.public_){toast('문서공개여부를 선택해주세요','err');return;}
+    var pubVal=document.getElementById('f-public').value;
+    if(pubVal!=='pub'&&!S.view){toast('열람범위를 선택해주세요','err');return;}
+    S.saved=true;toast('💾 임시저장 완료! 이제 본문작성을 클릭하세요');updateUI();
+  }
+  else if(action==='body'){
+    if(!S.saved){toast('임시저장을 먼저 해주세요','err');return;}
+    document.getElementById('sim-card').style.display='none';
+    document.getElementById('body-editor').style.display='flex';
+    // 레이아웃 전체 너비로 확장 (우측 가이드 숨김)
+    document.querySelector('.layout').style.gridTemplateColumns='1fr';
+    document.querySelector('.right-panel').style.display='none';
+    openBodyEditor();
+  }
+}
+function tbClick_card(){
+  document.getElementById('body-editor').style.display='none';
+  document.getElementById('sim-card').style.display='block';
+  document.querySelector('.layout').style.gridTemplateColumns='';
+  document.querySelector('.right-panel').style.display='';
+}
+function saveBody(){
+  var t=document.getElementById('f-title').value||'공문';
+  // 내가 쓴 공문 내용 저장
+  window._myWork = {
+    susin:   document.getElementById('doc-susin') ? document.getElementById('doc-susin').value : '',
+    title:   document.getElementById('doc-title') ? document.getElementById('doc-title').value : '',
+    body:    document.getElementById('doc-body-text') ? document.getElementById('doc-body-text').value : '',
+    attach:  document.getElementById('doc-attach-text') ? document.getElementById('doc-attach-text').value : ''
+  };
+  document.getElementById('body-editor').style.display='none';
+  document.getElementById('sim-card').style.display='block';
+  document.querySelector('.layout').style.gridTemplateColumns='';
+  document.querySelector('.right-panel').style.display='';
+  var fn=document.getElementById('body-filename');
+  fn.textContent='📄 '+t+'.pdf';fn.style.display='inline-flex';
+  document.getElementById('body-hint-txt').style.display='none';
+  toast('📄 본문이 저장되었습니다');
+  setTimeout(function(){
+    document.getElementById('sim-card').style.display='none';
+    document.getElementById('complete-screen').style.display='flex';
+  },1400);
+}
+
+function renderMyWork() {
+  var w = window._myWork || {};
+  var body = (w.body||'').replace(/\n/g,'<br>');
+  var attach = (w.attach||'').replace(/\n/g,'<br>');
+  var html =
+    '<div style="text-align:center;border:1px dashed #c00;padding:4px;font-size:10px;color:#555;">대한민국 대표 도시의 꿈, K-시흥시</div>'
+    +'<div style="border:1px dashed #c00;border-top:none;text-align:center;padding:8px;font-size:20pt;letter-spacing:12px;font-weight:400;">시 &nbsp; 흥 &nbsp; 시</div>'
+    +'<div style="border:1px dashed #c00;border-top:none;">'
+      +'<div style="display:flex;border-bottom:1px dashed #c00;">'
+        +'<div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;white-space:nowrap;">수신</div>'
+        +'<div style="flex:1;padding:3px 8px;font-size:10pt;">'+(w.susin||'')+'</div>'
+      +'</div>'
+      +'<div style="display:flex;border-bottom:1px dashed #c00;">'
+        +'<div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;white-space:nowrap;">(경유)</div>'
+        +'<div style="flex:1;padding:3px 8px;"></div>'
+      +'</div>'
+      +'<div style="display:flex;">'
+        +'<div style="width:52px;min-width:52px;padding:3px 5px;font-weight:600;border-right:1px dashed #c00;font-size:10pt;">제목</div>'
+        +'<div style="flex:1;padding:3px 8px;font-size:10pt;font-weight:700;">'+(w.title||'')+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="margin-top:10px;padding:0 2px;font-size:10.5pt;white-space:pre-wrap;word-break:break-all;">'+body+'</div>'
+    +(attach ? '<div style="margin-top:8px;padding:8px 2px 0;border-top:1px dashed #eee;display:flex;gap:6px;font-size:10.5pt;">'
+        +'<span style="font-weight:700;white-space:nowrap;">붙임</span>'
+        +'<span>&nbsp;&nbsp;</span>'
+        +'<div style="white-space:pre-wrap;">'+attach+'</div>'
+      +'</div>' : '')
+    +'<div style="margin-top:10px;border:1px solid #bbb;font-size:9pt;">'
+      +'<div style="display:flex;border-bottom:1px solid #bbb;">'
+        +'<div style="width:44px;background:#f5f5f5;border-right:1px solid #bbb;padding:3px 4px;font-weight:700;text-align:center;">시행</div>'
+        +'<div style="flex:1;border-right:1px solid #bbb;padding:3px 6px;">스마트도시과-0000 (2025. 9. 6.)</div>'
+        +'<div style="width:44px;background:#f5f5f5;border-right:1px solid #bbb;padding:3px 4px;font-weight:700;text-align:center;">접수</div>'
+        +'<div style="flex:1;padding:3px 6px;"></div>'
+      +'</div>'
+      +'<div style="padding:3px 7px;border-bottom:1px solid #bbb;font-size:8pt;color:#555;">우 15010 경기도 시흥시 배곧4로 94-52 / www.siheung.go.kr</div>'
+      +'<div style="padding:3px 7px;font-size:8pt;color:#555;">전화번호 031-310-3609 팩스번호 031-380-5395</div>'
+    +'</div>';
+  document.getElementById('mywork-letter').innerHTML = html;
+  openModal('mywork-modal');
+}
+
+// ===== 수신지정 탭 전환 =====
+var outerSelectedRecv = [];
+
+function switchRecvTab(tab) {
+  var inner = document.getElementById('recv-pane-inner');
+  var outer = document.getElementById('recv-pane-outer');
+  var tabI  = document.getElementById('recv-tab-inner');
+  var tabO  = document.getElementById('recv-tab-outer');
+  var activeStyle = 'padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;border-bottom:2px solid var(--blue);margin-bottom:-2px;color:var(--blue);background:#fff;';
+  var inactiveStyle = 'padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;color:var(--light);';
+  if (tab === 'inner') {
+    inner.style.display = 'flex';
+    outer.style.display = 'none';
+    tabI.style.cssText = activeStyle;
+    tabO.style.cssText = inactiveStyle;
+  } else {
+    inner.style.display = 'none';
+    outer.style.display = 'flex';
+    outer.style.flexDirection = 'column';
+    tabO.style.cssText = activeStyle;
+    tabI.style.cssText = inactiveStyle;
+    renderOuterTree();
+  }
+}
+
+// 대외 조직도 데이터
+var OUTER_ORG = {
+  label: '대한민국 정부', icon: '🏛', children: [
+    { label: '대통령', icon: '👤' },
+    { label: '대통령비서실', icon: '👤' },
+    { label: '국무조정실', icon: '👤' },
+    { label: '━━━━━━━━', divider: true },
+    {
+      label: '경기도', icon: '🏢', selectable: true, children: [
+        {
+          label: '수원시', icon: '🏢', children: [
+            { label: '시장', icon: '👤' },
+            { label: '제1부시장', icon: '👤' },
+            { label: '경제자유구역추진단', icon: '👤' },
+            { label: '제2부시장', icon: '👤' },
+            { label: '감사관', icon: '👤' },
+            { label: '공보관', icon: '👤' },
+            { label: '홍보기획관', icon: '👤' },
+            { label: '인권담당관', icon: '👤' },
+            { label: '기획조정실', icon: '📁' },
+            { label: '경제정책국', icon: '📁' },
+            { label: '시민복지국', icon: '📁' },
+            { label: '안전교통국', icon: '📁' },
+            {
+              label: '스마트정책국', icon: '📁', children: [
+                { label: 'AI전략과', icon: '👤' },
+                { label: '디지털정책과', icon: '👤' },
+                { label: '스마트도시과', icon: '👤', selectable: true }
+              ]
+            },
+            { label: '여성가족국', icon: '📁', children: [
+              { label: '여성정책과', icon: '👤' },
+              { label: '가족정책과', icon: '👤' }
+            ]}
+          ]
+        },
+        { label: '성남시', icon: '🏢' },
+        { label: '안양시', icon: '🏢' },
+        { label: '부천시', icon: '🏢' },
+        { label: '광명시', icon: '🏢' },
+        { label: '평택시', icon: '🏢' },
+        { label: '시흥시', icon: '🏢' },
+        { label: '군포시', icon: '🏢' },
+        { label: '의왕시', icon: '🏢' },
+        { label: '하남시', icon: '🏢' },
+        { label: '오산시', icon: '🏢' },
+        { label: '화성시', icon: '🏢' },
+        { label: '안산시', icon: '🏢' },
+        { label: '이천시', icon: '🏢' },
+        { label: '김포시', icon: '🏢' },
+        { label: '광주시', icon: '🏢' },
+        { label: '양주시', icon: '🏢' },
+        { label: '포천시', icon: '🏢' },
+        { label: '여주시', icon: '🏢' }
+      ]
+    },
+    { label: '서울특별시', icon: '🏢' },
+    { label: '인천광역시', icon: '🏢' },
+    { label: '부산광역시', icon: '🏢' },
+    { label: '대구광역시', icon: '🏢' },
+    { label: '광주광역시', icon: '🏢' },
+    { label: '대전광역시', icon: '🏢' },
+    { label: '울산광역시', icon: '🏢' },
+    { label: '세종특별자치시', icon: '🏢' }
+  ]
+};
+
+function renderOuterTree() {
+  var wrap = document.getElementById('outer-org-tree');
+  wrap.innerHTML = buildOuterNode(OUTER_ORG, 0, 'root');
+  // 초기 상태: 경기도 → 수원시 → 스마트정책국 → 스마트도시과만 펼쳐진 채로
+  var nodes = ['root_4', 'root_4_0', 'root_4_0_12'];
+  nodes.forEach(function(key) {
+    var el = document.getElementById('outernode-' + key);
+    var tog = document.getElementById('tog-' + key);
+    if (el) el.style.display = 'block';
+    if (tog) tog.textContent = '⊟';
+  });
+  nodes.forEach(function(key) {
+    var el = document.getElementById('outernode-' + key);
+    var tog = document.getElementById('tog-' + key);
+    if (el) el.style.display = 'block';
+    if (tog) tog.textContent = '⊟';
+  });
+}
+
+function buildOuterNode(node, depth, key) {
+  if (node.divider) return '<div style="padding:3px 8px;font-size:10px;color:#ccc;border-top:1px solid var(--line);margin:3px 0;">──────</div>';
+  var pad = depth * 14;
+  var hasChildren = node.children && node.children.length > 0;
+  var icon = node.icon || '📁';
+  var toggle = hasChildren ? '⊞' : '　';
+  var color = node.selectable ? 'color:var(--blue);font-weight:700;cursor:pointer;' : (hasChildren ? 'cursor:pointer;' : 'color:#555;cursor:default;');
+  var onclick = node.selectable
+    ? 'onclick="selectOuterRecv(\'' + key + '\',\'' + node.label + '\')"'
+    : (hasChildren ? 'onclick="toggleOuterNode(\'' + key + '\')"' : '');
+
+  var html = '<div style="padding:3px 8px 3px ' + (8 + pad) + 'px;font-size:12px;display:flex;align-items:center;gap:4px;' + color + '" ' + onclick + '>';
+  if (hasChildren) {
+    html += '<span id="tog-' + key + '" style="font-size:10px;color:#888;flex-shrink:0;" onclick="event.stopPropagation();toggleOuterNode(\'' + key + '\')">⊞</span>';
+  } else {
+    html += '<span style="width:12px;flex-shrink:0;"></span>';
+  }
+  html += '<span style="flex-shrink:0;">' + icon + '</span><span>' + node.label + '</span></div>';
+
+  if (hasChildren) {
+    html += '<div id="outernode-' + key + '" style="display:none;">';
+    node.children.forEach(function(child, i) {
+      html += buildOuterNode(child, depth + 1, key + '_' + i);
+    });
+    html += '</div>';
+  }
+  return html;
+}
+
+function toggleOuterNode(key) {
+  var el = document.getElementById('outernode-' + key);
+  var tog = document.getElementById('tog-' + key);
+  if (!el) return;
+  var isOpen = el.style.display === 'block';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (tog) tog.textContent = isOpen ? '⊞' : '⊟';
+}
+
+function selectOuterRecv(key, label) {
+  // 수원시장을 수신기관, 선택한 과를 참조기관으로
+  var parentLabel = '수원시장';
+  if (outerSelectedRecv.find(function(r){ return r.key === key; })) {
+    toast('이미 선택된 수신처입니다', 'err'); return;
+  }
+  outerSelectedRecv.push({ key: key, org: parentLabel, ref: label });
+  renderOuterRecvTable();
+  toast('✅ ' + parentLabel + ' / ' + label + ' 추가됨');
+}
+
+function renderOuterRecvTable() {
+  var tbody = document.getElementById('outer-recv-tbody');
+  if (!outerSelectedRecv.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:#aaa;">좌측 조직도에서 부서를 선택하세요</td></tr>';
+    return;
+  }
+  tbody.innerHTML = outerSelectedRecv.map(function(r, i) {
+    return '<tr style="background:' + (i % 2 === 0 ? '#f5f8ff' : '#fff') + '">'
+      + '<td style="border:1px solid var(--line);padding:5px 8px;text-align:center;"><input type="checkbox" checked onclick="removeOuterRecv(' + i + ')"></td>'
+      + '<td style="border:1px solid var(--line);padding:5px 8px;text-align:center;">' + r.org + '</td>'
+      + '<td style="border:1px solid var(--line);padding:5px 8px;text-align:center;color:var(--blue);font-weight:600;">' + r.ref + '</td>'
+      + '<td style="border:1px solid var(--line);padding:5px 8px;"></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function removeOuterRecv(i) {
+  outerSelectedRecv.splice(i, 1);
+  renderOuterRecvTable();
+}
+
+function confirmRecvOuter() {
+  if (!outerSelectedRecv.length) { toast('수신처를 선택해주세요', 'err'); return; }
+  var names = outerSelectedRecv.map(function(r) { return r.ref + '장'; }).join(', ');
+  document.getElementById('f-recv-display').value = names;
+  document.getElementById('f-recv-display').classList.add('ok');
+  S.recv = true;
+  closeModal('recv-modal');
+  toast('✅ 수신처 지정 완료');
+  updateUI();
+}
+var currentMode = 'full';
+function setMode(mode) {
+  currentMode = mode;
+  var btnFull  = document.getElementById('mode-btn-full');
+  var btnQuick = document.getElementById('mode-btn-quick');
+  var desc     = document.getElementById('mode-desc');
+  var progress = document.getElementById('progress-wrap');
+  var activeStyle = 'background:#fff;color:#0f2744;border:none;border-radius:4px;padding:5px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;';
+  var inactiveStyle = 'background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:5px 14px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;';
+
+  if (mode === 'full') {
+    btnFull.style.cssText = activeStyle;
+    btnQuick.style.cssText = inactiveStyle;
+    desc.textContent = '문서카드 → 본문작성 전체 흐름 실습';
+    progress.style.display = 'flex';
+    document.getElementById('body-editor').style.display = 'none';
+    document.getElementById('complete-screen').style.display = 'none';
+    document.getElementById('sim-card').style.display = 'block';
+    document.querySelector('.layout').style.gridTemplateColumns = '';
+    document.querySelector('.right-panel').style.display = '';
+    resetAll();
+  } else {
+    btnQuick.style.cssText = activeStyle;
+    btnFull.style.cssText = inactiveStyle;
+    desc.textContent = '본문 형식 연습만 바로 시작';
+    progress.style.display = 'none';
+    document.getElementById('sim-card').style.display = 'none';
+    document.getElementById('complete-screen').style.display = 'none';
+    document.getElementById('body-editor').style.display = 'flex';
+    document.querySelector('.layout').style.gridTemplateColumns = '1fr';
+    document.querySelector('.right-panel').style.display = 'none';
+    // 수신 readonly 해제 — 직접 입력
+    var susin = document.getElementById('doc-susin');
+    if (susin) {
+      susin.value = '';
+      susin.removeAttribute('readonly');
+      susin.style.color = '';
+      susin.style.fontWeight = '';
+      susin.style.background = 'transparent';
+      susin.placeholder = '수신처를 직접 입력하세요';
+    }
+    var docTitle = document.getElementById('doc-title');
+    if (docTitle) { docTitle.value = ''; }
+    var qRecv = document.getElementById('q-recv-display');
+    var qName = document.getElementById('q-recv-name');
+    if (qRecv) qRecv.textContent = '(직접 입력)';
+    if (qName) qName.textContent = '수신처';
+    resetBodyEditor();
+    toast('✏️ 본문 바로 작성 모드 — 수신·제목·본문을 직접 작성하세요');
+  }
+}
+
+function resetAll() {
+  S = {title:false,task:false,route:false,recv:false,sender:false,seal:false,auto:false,public_:false,view:false,saved:false};
+  selectedRecv = []; rmRows = [];
+  ['f-title','f-recv-display'].forEach(function(id){var el=document.getElementById(id);if(el){el.value='';el.className=el.className.replace(' ok','');}});
+  document.getElementById('f-task').value='';
+  document.getElementById('f-sender').value='';
+  document.getElementById('f-public').value='';
+  document.getElementById('f-view').value='';
+  document.getElementById('chk-auto').checked=false;
+  ['seal-btn1','seal-btn2'].forEach(function(id){var b=document.getElementById(id);b.textContent=id==='seal-btn1'?'관인':'서명';b.disabled=false;b.style.cssText='';});
+  document.getElementById('seal-result').style.display='none';
+  document.getElementById('seal-hint').style.display='inline';
+  document.getElementById('body-filename').style.display='none';
+  document.getElementById('body-hint-txt').style.display='inline';
+  var tb=document.getElementById('route-tbl').querySelector('tbody');
+  tb.innerHTML='<tr><td>기안</td><td>주무관</td><td>박희원</td><td></td><td></td><td></td></tr>';
+  document.getElementById('route-warn').style.display='block';
+  document.getElementById('badge-route').textContent='미완료';document.getElementById('badge-route').className='badge todo';
+  document.getElementById('badge-send').textContent='미완료';document.getElementById('badge-send').className='badge todo';
+  document.getElementById('badge-manage').textContent='미완료';document.getElementById('badge-manage').className='badge todo';
+  document.getElementById('frow-sender').style.display='';
+  document.getElementById('frow-auto').style.display='';
+  document.getElementById('btn-recv-wrap').style.display='';
+  document.getElementById('chk-ext').checked=true;
+  var on='display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--blue2);background:#eef4fb;font-weight:700;color:var(--blue2);';
+  var off='display:flex;align-items:center;gap:3px;cursor:pointer;padding:2px 8px;border-radius:10px;border:1px solid var(--border);';
+  document.getElementById('lbl-ext').style.cssText=on;
+  document.getElementById('lbl-int').style.cssText=off;
+  updateUI();
+  resetBodyEditor();
+}
+
+// 본문편집창 열릴 때 수신 동기화
+function openBodyEditor(){
+  var isQuick = currentMode === 'quick';
+  var recvVal = isQuick ? '수원시 스마트도시과' : document.getElementById('f-recv-display').value;
+
+  var susin = document.getElementById('doc-susin');
+  if(susin){
+    if(isQuick){
+      susin.value='';
+      susin.removeAttribute('readonly');
+      susin.style.color=''; susin.style.fontWeight=''; susin.style.background='transparent';
+      susin.placeholder='수신처를 직접 입력하세요';
+    } else {
+      susin.value=recvVal;
+      susin.setAttribute('readonly','readonly');
+      susin.style.color='var(--blue)'; susin.style.fontWeight='600'; susin.style.background='#f8faff';
+    }
+  }
+  var docTitle=document.getElementById('doc-title');
+  if(docTitle) docTitle.value='';
+
+  var qName=document.getElementById('q-recv-name');
+  var qRecv=document.getElementById('q-recv-display');
+  var qTarget=document.getElementById('q-target-display');
+  if(qName) qName.textContent=recvVal||'수신처';
+  if(qRecv) qRecv.textContent=recvVal||'(직접 입력)';
+  if(qTarget) qTarget.textContent=isQuick?'수원시 스마트도시과 담당 공무원':(recvVal?recvVal.replace(/장$/,'')+'장 담당 공무원':'담당 공무원');
+  resetBodyEditor();
+}
+
+// 채점
+var CHECKS=[
+  {id:1,check:function(t,b,a){var all=b+a;if(!/\d{4}[\. ]/.test(all))return{pass:null,msg:'날짜를 입력하지 않았습니다'};if(/20\d{2}\.\s*0\d\.|20\d{2}\.\d{2}\.\d/.test(all))return{pass:false,msg:'월/일 앞에 0을 쓰지 않습니다\n❌ 09. 06. → ✅ 9. 6.'};if(/20\d{2}\.\d+\.\d+\./.test(all))return{pass:false,msg:'온점 뒤에 공백이 필요합니다\n❌ 2025.9.6. → ✅ 2025. 9. 6.'};if(/20\d{2}\.\s+\d{1,2}\.\s+\d{1,2}\./.test(all))return{pass:true,msg:'날짜 표기 정확'};return{pass:false,msg:'날짜 형식 확인\n예) 2025. 9. 6.(토)'}}},
+  {id:2,check:function(t,b,a){if(!t.trim())return{pass:null,msg:'제목을 입력하지 않았습니다'};if(t.trim().endsWith('.'))return{pass:false,msg:'제목 끝에 마침표 금지\n❌ "...요청." → ✅ "...요청"'};return{pass:true,msg:'제목 형식 정확'}}},
+  {id:3,check:function(t,b,a){if(!b.trim())return{pass:null,msg:'본문을 입력하지 않았습니다'};var lines=b.split('\n');var first='';for(var i=0;i<lines.length;i++){if(lines[i].trim()){first=lines[i];break;}}if(/^\s{2,}/.test(first))return{pass:false,msg:'본문 첫 줄은 들여쓰기 없이 왼쪽부터\n(2017년 편람 개정)'};return{pass:true,msg:'본문 시작 위치 정확'}}},
+  {id:4,check:function(t,b,a){if(!/법률|규정|조례|훈령|고시|지침/.test(b))return{pass:null,msg:'법령 인용 없어 채점 생략'};if(!/「[^」]+」/.test(b))return{pass:false,msg:'법령명은 낫표(「 」)로 묶어야 합니다\n❌ 스마트도시법 → ✅ 「스마트도시법」'};return{pass:true,msg:'낫표 사용 정확'}}},
+  {id:5,check:function(t,b,a){if(!/시|오전|오후|\d+:\d+/.test(b))return{pass:null,msg:'시간 표기 없어 채점 생략'};if(/오전|오후/.test(b))return{pass:false,msg:'24시각제로 표기\n❌ 오후 3시 → ✅ 15:00'};if(/\d+시(\s*\d+분)?/.test(b))return{pass:false,msg:'시·분 글자 대신 쌍점\n❌ 3시 → ✅ 15:00'};if(/\d{1,2}:\d{2}/.test(b))return{pass:true,msg:'시간 표기 정확'};return{pass:false,msg:'시간은 24시각제\n예) 15:00'}}},
+  {id:6,check:function(t,b,a){var tgt=a.trim().length>0?a:b;if(!tgt.trim())return{pass:null,msg:'내용을 입력하지 않았습니다'};if(!/끝\./.test(tgt))return{pass:false,msg:'"끝." 표시 누락\n마지막 글자 뒤 2칸 띄고 끝.'};if(!/\S {2}끝\.|[ \t]{2}끝\./.test(tgt))return{pass:false,msg:'"끝." 앞 2칸(2타) 필수\n❌ 바랍니다.끝. → ✅ 바랍니다.  끝.'};return{pass:true,msg:'"끝." 위치 정확'}}},
+  {id:7,check:function(t,b,a){
+    // 붙임 textarea에 내용이 없으면 본문에서 붙임 키워드 찾기
+    if(!a.trim()){
+      if(!/붙임/.test(b)) return{pass:null,msg:'붙임 없어 채점 생략'};
+      if(/붙임\s*:/.test(b)) return{pass:false,msg:'붙임 뒤 쌍점 금지\n❌ 붙임: 자료 → ✅ 붙임  자료'};
+      if(!/붙임\s{2}/.test(b)) return{pass:false,msg:'붙임 뒤 공백 2칸\n❌ 붙임 자료 → ✅ 붙임  자료'};
+      return{pass:true,msg:'붙임 형식 정확'};
+    }
+    // 붙임 textarea에 내용이 있으면 → HTML 라벨이 붙임이므로 쌍점/공백 체크 생략, 통과
+    return{pass:true,msg:'붙임 내용 입력 확인'};
+  }},
+  {id:8,check:function(t,b,a){if(!a.trim())return{pass:null,msg:'붙임을 입력하지 않았습니다'};var lines=a.trim().split('\n').filter(function(l){return l.trim();});if(lines.length<2)return{pass:null,msg:'붙임 1개여서 채점 생략'};if(!/끝\./.test(lines[lines.length-1]))return{pass:false,msg:'붙임 마지막 항목 뒤 2칸+끝.\n❌ 1부. → ✅ 1부.  끝.'};return{pass:true,msg:'붙임 마지막 끝. 정확'}}},
+  {id:9,check:function(t,b,a){
+    if(!b.trim())return{pass:null,msg:'본문을 입력하지 않았습니다'};
+    var lines=b.split('\n');
+    var order=[];
+    lines.forEach(function(line){
+      var m=line.match(/^\s*(가|나|다|라|마)\./);
+      if(m) order.push(m[1]);
+    });
+    if(order.length===0)return{pass:true,msg:'항목 기호 없어 채점 생략'};
+    var seq=['가','나','다','라','마'];
+    var expected=seq.slice(0,order.length);
+    for(var i=0;i<order.length;i++){
+      if(order[i]!==expected[i])return{pass:false,msg:'항목 순서 오류: '+order.join('.')+'.\n가.나.다. 순서로 작성하세요'};
+    }
+    return{pass:true,msg:'항목 기호 순서 정확'};
+  }},
+  {id:10,check:function(t,b,a){if(!b.trim())return{pass:null,msg:'본문을 입력하지 않았습니다'};if(/[가-힣a-zA-Z]\s+:/.test(b))return{pass:false,msg:'쌍점 앞은 붙여 씁니다\n❌ 일시 : → ✅ 일시:'};if(/:[^\s\d\n]/.test(b))return{pass:false,msg:'쌍점 뒤 1칸 필수\n❌ 일시:내용 → ✅ 일시: 내용'};return{pass:true,msg:'쌍점 앞뒤 공백 정확'}}}
+];
+
+function gradeBody(){
+  var t=document.getElementById('doc-title').value;
+  var b=document.getElementById('doc-body-text').value;
+  var ae=document.getElementById('doc-attach-text');
+  var a=ae?ae.value:'';
+  var pass=0,total=0;
+  CHECKS.forEach(function(c){
+    var r=c.check(t,b,a);
+    var chip=document.getElementById('gc-'+c.id);
+    var tip=chip.querySelector('.gc-tip');
+    if(r.pass===null){chip.className='gc pend';tip.innerHTML=r.msg;}
+    else if(r.pass){chip.className='gc pass';tip.innerHTML='✅ '+r.msg;pass++;total++;}
+    else{chip.className='gc fail';tip.innerHTML='❌ '+r.msg.replace(/\n/g,'<br>');total++;}
+  });
+  var sc=document.getElementById('grade-score');
+  sc.textContent=pass+' / '+total+'점';
+  var ratio=total>0?pass/total:0;
+  sc.style.background=ratio===1?'var(--ok)':ratio>=0.7?'var(--blue2)':'var(--err)';
+  toast(pass===total?'🎉 만점! 정확합니다!':'채점 완료! 빨간 항목을 확인하세요');
+}
+
+function resetBodyEditor(){
+  ['doc-title','doc-body-text','doc-attach-text'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  for(var i=1;i<=10;i++){var c=document.getElementById('gc-'+i);if(!c)continue;c.className='gc pend';c.querySelector('.gc-tip').textContent='채점 전';}
+  var sc=document.getElementById('grade-score');if(sc){sc.textContent='채점 전';sc.style.background='var(--blue)';}
+}
+
+// UI
+function getCur(){if(!S.title)return 1;if(!S.task)return 2;if(!S.route)return 3;if(!S.recv)return 4;if(!S.sender)return 5;if(!S.auto&&!S.seal)return 6;if(!S.public_||!S.view)return 7;if(!S.saved)return 8;return 9;}
+function setBtn(id,state){var el=document.getElementById(id);if(el)el.className='tb '+state;}
+function updateUI(){
+  var cur=getCur();
+  for(var i=0;i<=9;i++){var el=document.getElementById('pb'+i);if(!el)continue;el.className='step-bubble';if(i<cur)el.classList.add('done');else if(i===cur)el.classList.add('active');}
+  for(var i=1;i<=9;i++){var g=document.getElementById('g'+i);var n=document.getElementById('gn'+i);if(!g)continue;g.className='sg';if(i<cur){g.classList.add('done');if(n){n.className='num d';n.textContent='✓';}}else if(i===cur){g.classList.add('active');if(n)n.className='num a';}else g.classList.add('pend');}
+  if(!S.title||!S.task)setBtn('tb-route','off');else if(!S.route)setBtn('tb-route','cur');else setBtn('tb-route','done');
+  if(!S.route)setBtn('tb-recv','off');else if(!S.recv)setBtn('tb-recv','cur');else setBtn('tb-recv','done');
+  var sealOk=S.auto||S.seal,ready=S.route&&S.recv&&S.sender&&sealOk&&S.public_&&S.view;
+  if(!ready)setBtn('tb-save','off');else if(!S.saved)setBtn('tb-save','cur');else setBtn('tb-save','done');
+  var bs=!S.saved?'off':'cur';setBtn('tb-body',bs);setBtn('tb-body2',bs);
+  var isInt=document.getElementById('chk-int').checked;
+  if((isInt&&S.recv&&S.public_)||(S.sender&&(S.auto||S.seal)&&S.public_&&S.recv)){document.getElementById('badge-send').textContent='완료';document.getElementById('badge-send').className='badge done2';}
+  else{document.getElementById('badge-send').textContent='미완료';document.getElementById('badge-send').className='badge todo';}
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function toast(msg,type){type=type||'ok';var t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.style.display='block';clearTimeout(window._tt);window._tt=setTimeout(function(){t.style.display='none';},2800);}
+
+window.addEventListener('DOMContentLoaded',function(){updateUI();});
+</script>
+</body>
+</html>
