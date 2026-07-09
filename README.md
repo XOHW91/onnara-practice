@@ -29,7 +29,7 @@
 3. 본문 작성 단계에서 실제 공문 본문을 작성해봅니다.
 4. 채점 버튼을 눌러 어떤 부분이 틀렸는지 확인하고 고쳐봅니다.
 
-🔗 **실습 바로가기**: `https://<깃허브아이디>.github.io/onnara-practice/`
+🔗 **실습 바로가기**: `https://XOHW91.github.io/onnara-practice/`
 
 ## 이런 분께 추천합니다
 
